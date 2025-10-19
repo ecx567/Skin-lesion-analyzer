@@ -1,0 +1,315 @@
+{% extends 'skin_detector/base.html' %}
+
+{% block title %}{{ title }} - Detector de Enfermedades Cutáneas{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Formulario de Subida -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-cloud-upload-alt me-2"></i>
+                    Subir Imagen para Análisis
+                </h4>
+                <small>Suba una imagen de lesión cutánea para obtener un diagnóstico automático</small>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" id="uploadForm">
+                    {% csrf_token %}
+                    
+                    <!-- Drop Zone -->
+                    <div class="drop-zone mb-4" id="dropZone">
+                        <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                        <h5>Arrastra tu imagen aquí</h5>
+                        <p class="text-muted mb-3">o haz clic para seleccionar</p>
+                        {{ form.image }}
+                    </div>
+                    
+                    <!-- Vista Previa -->
+                    <div class="text-center mb-4" id="previewContainer" style="display: none;">
+                        <img id="imagePreview" class="image-preview" alt="Vista previa" />
+                    </div>
+                    
+                    <!-- Botones -->
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary btn-lg me-3">
+                            <i class="fas fa-microscope me-2"></i>
+                            Analizar Imagen
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
+                            <i class="fas fa-undo me-2"></i>
+                            Limpiar
+                        </button>
+                    </div>
+                    
+                    <!-- Loading Spinner -->
+                    <div class="text-center mt-3 loading-spinner">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Procesando...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Analizando imagen, por favor espere...</p>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Predicción Rápida -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>
+                    Análisis Rápido
+                </h5>
+                <small>Análisis sin guardar historial</small>
+            </div>
+            <div class="card-body">
+                <form id="quickForm" enctype="multipart/form-data">
+                    <div class="row align-items-end">
+                        <div class="col-md-8">
+                            <input type="file" class="form-control" id="quickImage" accept="image/*" required>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-zap me-1"></i>
+                                Análisis Rápido
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                
+                <!-- Resultado Rápido -->
+                <div id="quickResult" class="mt-4" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Información y Predicciones Recientes -->
+    <div class="col-lg-4">
+        <!-- Información del Sistema -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Información del Sistema
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6><i class="fas fa-eye me-2"></i>Enfermedades Detectables:</h6>
+                <ul class="list-unstyled">
+                    <li><span class="severity-badge severity-moderada text-white">AKIEC</span> Queratosis Actínicas</li>
+                    <li><span class="severity-badge severity-alta text-white">BCC</span> Carcinoma Basocelular</li>
+                    <li><span class="severity-badge severity-baja text-white">BKL</span> Queratosis Benigna</li>
+                    <li><span class="severity-badge severity-baja text-white">DF</span> Dermatofibroma</li>
+                    <li><span class="severity-badge severity-muy-alta text-white">MEL</span> Melanoma</li>
+                    <li><span class="severity-badge severity-baja text-white">NV</span> Nevos Melanocíticos</li>
+                    <li><span class="severity-badge severity-moderada text-white">VASC</span> Lesiones Vasculares</li>
+                </ul>
+                
+                <hr>
+                
+                <h6><i class="fas fa-file-image me-2"></i>Formatos Soportados:</h6>
+                <p class="small text-muted mb-2">JPG, JPEG, PNG (máx. 10MB)</p>
+                
+                <h6><i class="fas fa-clock me-2"></i>Tiempo de Procesamiento:</h6>
+                <p class="small text-muted">Aproximadamente 2-5 segundos</p>
+            </div>
+        </div>
+        
+        <!-- Predicciones Recientes -->
+        {% if recent_predictions %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>
+                    Análisis Recientes
+                </h5>
+            </div>
+            <div class="card-body">
+                {% for prediction in recent_predictions %}
+                <div class="prediction-card border rounded p-3 mb-3">
+                    <div class="row align-items-center">
+                        <div class="col-3">
+                            <img src="{{ prediction.image.url }}" alt="Imagen" 
+                                 class="img-fluid rounded" style="height: 60px; object-fit: cover;">
+                        </div>
+                        <div class="col-9">
+                            <h6 class="mb-1">{{ prediction.get_predicted_disease_name }}</h6>
+                            <small class="text-muted">
+                                <i class="fas fa-percentage me-1"></i>
+                                {{ prediction.get_confidence_percentage }}% confianza
+                            </small><br>
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>
+                                {{ prediction.processed_at|timesince }} atrás
+                            </small>
+                            <div class="mt-2">
+                                <a href="{% url 'skin_detector:prediction_detail' prediction.pk %}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye me-1"></i>Ver Detalles
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                
+                <div class="text-center">
+                    <a href="{% url 'skin_detector:history' %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-history me-1"></i>
+                        Ver Todo el Historial
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal de Advertencia -->
+<div class="modal fade" id="warningModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    Advertencia Médica
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Este sistema es solo una herramienta de apoyo y NO reemplaza el criterio médico profesional.</strong></p>
+                <ul>
+                    <li>Los resultados pueden tener errores</li>
+                    <li>Siempre consulte a un dermatólogo certificado</li>
+                    <li>No tome decisiones médicas basándose únicamente en esta herramienta</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+                    Entiendo
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Setup drag and drop
+    setupDragDrop('#dropZone', $('#id_image'));
+    
+    // Click en drop zone
+    $('#dropZone').click(function() {
+        $('#id_image').click();
+    });
+    
+    // Preview de imagen principal
+    $('#id_image').change(function() {
+        if (this.files && this.files[0]) {
+            previewImage(this, '#imagePreview');
+            $('#previewContainer').show();
+        }
+    });
+    
+    // Formulario principal
+    $('#uploadForm').submit(function() {
+        if (!$('#id_image')[0].files.length) {
+            alert('Por favor selecciona una imagen');
+            return false;
+        }
+        showLoading(true);
+        $('#warningModal').modal('show');
+        return true;
+    });
+    
+    // Análisis rápido
+    $('#quickForm').submit(function(e) {
+        e.preventDefault();
+        
+        if (!$('#quickImage')[0].files.length) {
+            alert('Selecciona una imagen para análisis rápido');
+            return;
+        }
+        
+        var formData = new FormData();
+        formData.append('image', $('#quickImage')[0].files[0]);
+        
+        $.ajax({
+            url: '{% url "skin_detector:quick_predict" %}',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            beforeSend: function() {
+                $('#quickResult').html('<div class="text-center"><div class="spinner-border text-primary"></div><p>Analizando...</p></div>').show();
+            },
+            success: function(response) {
+                if (response.success) {
+                    displayQuickResult(response.result);
+                } else {
+                    $('#quickResult').html('<div class="alert alert-danger">Error: ' + response.error + '</div>');
+                }
+            },
+            error: function() {
+                $('#quickResult').html('<div class="alert alert-danger">Error en el servidor</div>');
+            }
+        });
+    });
+});
+
+function resetForm() {
+    $('#uploadForm')[0].reset();
+    $('#previewContainer').hide();
+    $('#quickResult').hide();
+    $('#quickForm')[0].reset();
+}
+
+function displayQuickResult(result) {
+    var severityClass = getSeverityClass(result.disease_info.severity);
+    
+    var html = `
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0"><i class="fas fa-check-circle me-2"></i>Resultado del Análisis</h6>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center mb-3">
+                    <div class="col-4">
+                        <div class="progress-circle mx-auto" data-percentage="${result.confidence_percentage}">
+                            <div class="progress-text">${result.confidence_percentage}%</div>
+                        </div>
+                    </div>
+                    <div class="col-8">
+                        <h5>${result.class_name_spanish}</h5>
+                        <span class="severity-badge ${severityClass} text-white">${result.disease_info.severity}</span>
+                    </div>
+                </div>
+                <p class="small">${result.disease_info.description}</p>
+                <div class="alert alert-info">
+                    <strong>Recomendación:</strong> ${result.disease_info.recommendation}
+                </div>
+                <small class="text-muted">Procesado en ${result.processing_time}s</small>
+            </div>
+        </div>
+    `;
+    
+    $('#quickResult').html(html);
+    
+    // Actualizar círculo de progreso
+    updateProgressCircle('#quickResult .progress-circle', result.confidence_percentage);
+}
+
+function getSeverityClass(severity) {
+    switch(severity.toLowerCase()) {
+        case 'baja': return 'severity-baja';
+        case 'moderada': return 'severity-moderada';
+        case 'alta': return 'severity-alta';
+        case 'muy alta': return 'severity-muy-alta';
+        default: return 'severity-baja';
+    }
+}
+</script>
+{% endblock %}

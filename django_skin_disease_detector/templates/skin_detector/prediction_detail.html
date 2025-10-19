@@ -1,0 +1,358 @@
+{% extends 'skin_detector/base.html' %}
+
+{% block title %}{{ title }} - Detalle de Predicción{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Imagen y Resultado Principal -->
+    <div class="col-lg-8">
+        <!-- Imagen Original -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-image me-2"></i>
+                    Imagen Analizada
+                </h4>
+                <small>Predicción #{{ prediction.id }} - {{ prediction.uploaded_at|date:"d/m/Y H:i" }}</small>
+            </div>
+            <div class="card-body text-center">
+                <img src="{{ prediction.image.url }}" alt="Imagen analizada" 
+                     class="image-preview mb-3" style="max-height: 500px;">
+                     
+                {% if prediction.image_size %}
+                <p class="text-muted">
+                    <i class="fas fa-expand-arrows-alt me-1"></i>
+                    Dimensiones: {{ prediction.image_size }}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Resultado Principal -->
+        {% if prediction.predicted_class %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-diagnosis me-2"></i>
+                    Resultado del Diagnóstico
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center mb-4">
+                    <div class="col-md-4 text-center">
+                        <div class="progress-circle mx-auto mb-3" data-percentage="{{ prediction.get_confidence_percentage }}">
+                            <div class="progress-text">{{ prediction.get_confidence_percentage }}%</div>
+                        </div>
+                        <h6>Confianza</h6>
+                    </div>
+                    <div class="col-md-8">
+                        <h3 class="mb-3">{{ prediction.get_predicted_disease_name }}</h3>
+                        {% if prediction.predicted_class in 'mel,bcc' %}
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>ATENCIÓN URGENTE:</strong> Esta condición requiere evaluación médica inmediata.
+                            </div>
+                        {% elif prediction.predicted_class in 'akiec,vasc' %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                <strong>IMPORTANTE:</strong> Se recomienda consulta dermatológica.
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>INFORMACIÓN:</strong> Condición generalmente benigna, monitoree cambios.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Detalles del Procesamiento -->
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <i class="fas fa-clock fa-2x text-primary mb-2"></i>
+                                <h6>Tiempo de Procesamiento</h6>
+                                <p class="mb-0">{{ prediction.processing_time|default:"N/A" }}s</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <i class="fas fa-calendar fa-2x text-success mb-2"></i>
+                                <h6>Fecha de Análisis</h6>
+                                <p class="mb-0">{{ prediction.processed_at|date:"d/m/Y" }}</p>
+                                <small>{{ prediction.processed_at|time:"H:i" }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <i class="fas fa-code fa-2x text-info mb-2"></i>
+                                <h6>Código de Clase</h6>
+                                <p class="mb-0">{{ prediction.predicted_class|upper }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="card mb-4">
+            <div class="card-body text-center">
+                <i class="fas fa-hourglass-half fa-3x text-muted mb-3"></i>
+                <h5>Imagen pendiente de procesamiento</h5>
+                <p class="text-muted">La imagen se procesará automáticamente</p>
+                <button class="btn btn-primary" onclick="location.reload()">
+                    <i class="fas fa-sync-alt me-2"></i>Actualizar
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Panel Lateral -->
+    <div class="col-lg-4">
+        <!-- Top Predicciones -->
+        {% if top_predictions %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    Top 3 Predicciones
+                </h5>
+                <small>Probabilidades de todas las clases</small>
+            </div>
+            <div class="card-body">
+                {% for pred in top_predictions %}
+                <div class="mb-3 {% if forloop.first %}border border-primary rounded p-2{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">
+                            #{{ pred.rank }} {{ pred.spanish }}
+                            {% if forloop.first %}<i class="fas fa-crown text-warning ms-2"></i>{% endif %}
+                        </h6>
+                        <span class="badge bg-primary">{{ pred.percentage }}%</span>
+                    </div>
+                    
+                    <!-- Barra de Progreso -->
+                    <div class="progress mb-2" style="height: 8px;">
+                        <div class="progress-bar 
+                            {% if pred.percentage >= 70 %}bg-success
+                            {% elif pred.percentage >= 40 %}bg-warning
+                            {% else %}bg-danger{% endif %}" 
+                            style="width: {{ pred.percentage }}%"></div>
+                    </div>
+                    
+                    <p class="small text-muted mb-1">{{ pred.disease_info.description }}</p>
+                    
+                    <div class="d-flex justify-content-between">
+                        <span class="severity-badge 
+                            {% if pred.disease_info.severity == 'Baja' %}severity-baja
+                            {% elif pred.disease_info.severity == 'Moderada' %}severity-moderada
+                            {% elif pred.disease_info.severity == 'Alta' %}severity-alta
+                            {% else %}severity-muy-alta{% endif %} text-white small">
+                            {{ pred.disease_info.severity }}
+                        </span>
+                        <small class="text-muted">{{ pred.class_code|upper }}</small>
+                    </div>
+                </div>
+                {% if not forloop.last %}<hr>{% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Información Médica -->
+        {% if prediction.predicted_class %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-stethoscope me-2"></i>
+                    Información Médica
+                </h5>
+            </div>
+            <div class="card-body">
+                {% with top_predictions.0 as main_pred %}
+                <h6><i class="fas fa-info-circle me-2"></i>Descripción:</h6>
+                <p class="mb-3">{{ main_pred.disease_info.description }}</p>
+                
+                <h6><i class="fas fa-clipboard-list me-2"></i>Recomendación:</h6>
+                <div class="alert 
+                    {% if main_pred.disease_info.severity == 'Muy Alta' %}alert-danger
+                    {% elif main_pred.disease_info.severity == 'Alta' %}alert-warning
+                    {% else %}alert-info{% endif %}">
+                    {{ main_pred.disease_info.recommendation }}
+                </div>
+                
+                <h6><i class="fas fa-exclamation-triangle me-2"></i>Nivel de Severidad:</h6>
+                <span class="severity-badge 
+                    {% if main_pred.disease_info.severity == 'Baja' %}severity-baja
+                    {% elif main_pred.disease_info.severity == 'Moderada' %}severity-moderada
+                    {% elif main_pred.disease_info.severity == 'Alta' %}severity-alta
+                    {% else %}severity-muy-alta{% endif %} text-white">
+                    {{ main_pred.disease_info.severity }}
+                </span>
+                {% endwith %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Acciones -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-tools me-2"></i>
+                    Acciones
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'skin_detector:home' %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>
+                        Nuevo Análisis
+                    </a>
+                    
+                    <a href="{% url 'skin_detector:history' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-history me-2"></i>
+                        Ver Historial
+                    </a>
+                    
+                    <button class="btn btn-outline-info" onclick="downloadResult()">
+                        <i class="fas fa-download me-2"></i>
+                        Descargar Reporte
+                    </button>
+                    
+                    <button class="btn btn-outline-success" onclick="shareResult()">
+                        <i class="fas fa-share-alt me-2"></i>
+                        Compartir Resultado
+                    </button>
+                </div>
+                
+                <hr class="my-3">
+                
+                <div class="text-center">
+                    <button class="btn btn-outline-danger btn-sm" onclick="confirmDelete()">
+                        <i class="fas fa-trash me-2"></i>
+                        Eliminar Análisis
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Reporte -->
+<div class="modal fade" id="reportModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-pdf me-2"></i>
+                    Reporte de Análisis
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="reportContent">
+                <!-- Contenido del reporte se genera dinámicamente -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" onclick="printReport()">
+                    <i class="fas fa-print me-2"></i>Imprimir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Actualizar círculo de progreso
+    {% if prediction.get_confidence_percentage %}
+    updateProgressCircle('.progress-circle', {{ prediction.get_confidence_percentage }});
+    {% endif %}
+});
+
+function downloadResult() {
+    $('#reportModal').modal('show');
+    generateReport();
+}
+
+function generateReport() {
+    var content = `
+        <div class="text-center mb-4">
+            <h3>Reporte de Análisis de Piel</h3>
+            <p class="text-muted">Predicción #{{ prediction.id }}</p>
+        </div>
+        
+        <table class="table table-bordered">
+            <tr>
+                <td><strong>Fecha de Análisis:</strong></td>
+                <td>{{ prediction.processed_at|date:"d/m/Y H:i" }}</td>
+            </tr>
+            <tr>
+                <td><strong>Diagnóstico:</strong></td>
+                <td>{{ prediction.get_predicted_disease_name }}</td>
+            </tr>
+            <tr>
+                <td><strong>Confianza:</strong></td>
+                <td>{{ prediction.get_confidence_percentage }}%</td>
+            </tr>
+            <tr>
+                <td><strong>Tiempo de Procesamiento:</strong></td>
+                <td>{{ prediction.processing_time|default:"N/A" }} segundos</td>
+            </tr>
+        </table>
+        
+        <div class="alert alert-warning">
+            <strong>Advertencia:</strong> Este análisis es solo para referencia. 
+            Consulte siempre a un profesional médico certificado.
+        </div>
+    `;
+    
+    $('#reportContent').html(content);
+}
+
+function shareResult() {
+    if (navigator.share) {
+        navigator.share({
+            title: 'Resultado de Análisis de Piel',
+            text: 'Diagnóstico: {{ prediction.get_predicted_disease_name }} ({{ prediction.get_confidence_percentage }}% confianza)',
+            url: window.location.href
+        });
+    } else {
+        // Fallback para navegadores que no soportan Web Share API
+        var url = window.location.href;
+        var text = 'Resultado de análisis de piel: {{ prediction.get_predicted_disease_name }}';
+        
+        // Copiar al portapapeles
+        navigator.clipboard.writeText(url).then(function() {
+            alert('Enlace copiado al portapapeles');
+        });
+    }
+}
+
+function confirmDelete() {
+    if (confirm('¿Está seguro de que desea eliminar este análisis? Esta acción no se puede deshacer.')) {
+        // Implementar eliminación
+        alert('Funcionalidad de eliminación no implementada aún');
+    }
+}
+
+function printReport() {
+    var printContent = document.getElementById('reportContent').innerHTML;
+    var originalContent = document.body.innerHTML;
+    
+    document.body.innerHTML = printContent;
+    window.print();
+    document.body.innerHTML = originalContent;
+    
+    // Recargar para restaurar funcionalidad
+    location.reload();
+}
+</script>
+{% endblock %}

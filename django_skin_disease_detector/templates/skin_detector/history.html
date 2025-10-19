@@ -1,0 +1,431 @@
+{% extends 'skin_detector/base.html' %}
+
+{% block title %}{{ title }} - Historial de Análisis{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h2 mb-2">
+            <i class="fas fa-history me-3"></i>
+            Historial de Análisis
+        </h1>
+        <p class="text-muted">Revise todos sus análisis previos de detección de enfermedades cutáneas</p>
+    </div>
+    
+    <div>
+        <a href="{% url 'skin_detector:home' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>
+            Nuevo Análisis
+        </a>
+    </div>
+</div>
+
+<!-- Filtros y Búsqueda -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" id="filterForm">
+            <div class="row align-items-end">
+                <div class="col-md-3">
+                    <label for="dateFrom" class="form-label">Desde:</label>
+                    <input type="date" class="form-control" id="dateFrom" name="date_from" 
+                           value="{{ request.GET.date_from }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="dateTo" class="form-label">Hasta:</label>
+                    <input type="date" class="form-control" id="dateTo" name="date_to" 
+                           value="{{ request.GET.date_to }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="classFilter" class="form-label">Diagnóstico:</label>
+                    <select class="form-select" id="classFilter" name="predicted_class">
+                        <option value="">Todos los diagnósticos</option>
+                        <option value="akiec" {% if request.GET.predicted_class == 'akiec' %}selected{% endif %}>
+                            Queratosis Actínica / Carcinoma (akiec)
+                        </option>
+                        <option value="bcc" {% if request.GET.predicted_class == 'bcc' %}selected{% endif %}>
+                            Carcinoma Basocelular (bcc)
+                        </option>
+                        <option value="bkl" {% if request.GET.predicted_class == 'bkl' %}selected{% endif %}>
+                            Queratosis Benigna (bkl)
+                        </option>
+                        <option value="df" {% if request.GET.predicted_class == 'df' %}selected{% endif %}>
+                            Dermatofibroma (df)
+                        </option>
+                        <option value="mel" {% if request.GET.predicted_class == 'mel' %}selected{% endif %}>
+                            Melanoma (mel)
+                        </option>
+                        <option value="nv" {% if request.GET.predicted_class == 'nv' %}selected{% endif %}>
+                            Nevo Melanocítico (nv)
+                        </option>
+                        <option value="vasc" {% if request.GET.predicted_class == 'vasc' %}selected{% endif %}>
+                            Lesión Vascular (vasc)
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="d-grid gap-2 d-md-flex">
+                        <button type="submit" class="btn btn-primary flex-fill">
+                            <i class="fas fa-search me-2"></i>
+                            Filtrar
+                        </button>
+                        <a href="{% url 'skin_detector:history' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Estadísticas Rápidas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center bg-primary text-white">
+            <div class="card-body">
+                <i class="fas fa-images fa-2x mb-2"></i>
+                <h3 class="mb-0">{{ total_predictions }}</h3>
+                <p class="mb-0">Total Análisis</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center bg-success text-white">
+            <div class="card-body">
+                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                <h3 class="mb-0">{{ processed_predictions }}</h3>
+                <p class="mb-0">Procesados</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center bg-info text-white">
+            <div class="card-body">
+                <i class="fas fa-chart-line fa-2x mb-2"></i>
+                <h3 class="mb-0">{{ avg_confidence|floatformat:1 }}%</h3>
+                <p class="mb-0">Confianza Promedio</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center bg-warning text-white">
+            <div class="card-body">
+                <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                <h3 class="mb-0">{{ high_risk_predictions }}</h3>
+                <p class="mb-0">Alto Riesgo</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Predicciones -->
+{% if predictions %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Resultados ({{ predictions|length }} de {{ total_predictions }})</h5>
+        <div class="btn-group" role="group">
+            <input type="checkbox" class="btn-check" id="selectAll" onclick="toggleAllSelections()">
+            <label class="btn btn-outline-primary" for="selectAll">Seleccionar Todos</label>
+            <button type="button" class="btn btn-outline-danger" onclick="bulkDelete()" disabled id="bulkDeleteBtn">
+                <i class="fas fa-trash me-2"></i>Eliminar Seleccionados
+            </button>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        {% for prediction in predictions %}
+        <div class="prediction-item border-bottom p-3 
+            {% if prediction.predicted_class in 'mel,bcc' %}border-danger border-start border-4
+            {% elif prediction.predicted_class in 'akiec,vasc' %}border-warning border-start border-4
+            {% else %}border-success border-start border-4{% endif %}">
+            
+            <div class="row align-items-center">
+                <!-- Checkbox de Selección -->
+                <div class="col-md-1">
+                    <input type="checkbox" class="form-check-input prediction-checkbox" 
+                           value="{{ prediction.id }}" onchange="updateBulkActions()">
+                </div>
+                
+                <!-- Imagen Miniatura -->
+                <div class="col-md-2">
+                    {% if prediction.image %}
+                    <img src="{{ prediction.image.url }}" alt="Análisis #{{ prediction.id }}" 
+                         class="img-thumbnail" style="width: 80px; height: 80px; object-fit: cover;">
+                    {% else %}
+                    <div class="bg-light rounded d-flex align-items-center justify-content-center" 
+                         style="width: 80px; height: 80px;">
+                        <i class="fas fa-image fa-2x text-muted"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Información Principal -->
+                <div class="col-md-4">
+                    <h6 class="mb-1">
+                        Análisis #{{ prediction.id }}
+                        {% if prediction.predicted_class %}
+                            <span class="severity-badge 
+                                {% if prediction.predicted_class in 'mel,bcc' %}severity-muy-alta
+                                {% elif prediction.predicted_class in 'akiec,vasc' %}severity-alta
+                                {% else %}severity-baja{% endif %} text-white small ms-2">
+                                {% if prediction.predicted_class == 'mel' %}MELANOMA
+                                {% elif prediction.predicted_class == 'bcc' %}CARCINOMA
+                                {% elif prediction.predicted_class == 'akiec' %}QUERATOSIS
+                                {% elif prediction.predicted_class == 'vasc' %}VASCULAR
+                                {% elif prediction.predicted_class == 'bkl' %}BENIGNO
+                                {% elif prediction.predicted_class == 'df' %}DERMATOFIBROMA
+                                {% elif prediction.predicted_class == 'nv' %}NEVO
+                                {% endif %}
+                            </span>
+                        {% endif %}
+                    </h6>
+                    
+                    {% if prediction.predicted_class %}
+                    <p class="mb-1">
+                        <strong>{{ prediction.get_predicted_disease_name }}</strong>
+                    </p>
+                    <p class="mb-0 text-muted">
+                        Confianza: {{ prediction.get_confidence_percentage }}%
+                        {% if prediction.processing_time %}
+                        | Procesado en {{ prediction.processing_time }}s
+                        {% endif %}
+                    </p>
+                    {% else %}
+                    <p class="mb-1 text-warning">
+                        <i class="fas fa-clock me-1"></i>
+                        Pendiente de procesamiento
+                    </p>
+                    {% endif %}
+                </div>
+                
+                <!-- Fecha y Estado -->
+                <div class="col-md-2">
+                    <p class="mb-1">
+                        <i class="fas fa-calendar me-1"></i>
+                        {{ prediction.uploaded_at|date:"d/m/Y" }}
+                    </p>
+                    <p class="mb-0">
+                        <i class="fas fa-clock me-1"></i>
+                        {{ prediction.uploaded_at|time:"H:i" }}
+                    </p>
+                    
+                    {% if prediction.processed_at %}
+                    <small class="text-success">
+                        <i class="fas fa-check-circle me-1"></i>
+                        Procesado
+                    </small>
+                    {% else %}
+                    <small class="text-warning">
+                        <i class="fas fa-hourglass-half me-1"></i>
+                        Pendiente
+                    </small>
+                    {% endif %}
+                </div>
+                
+                <!-- Acciones -->
+                <div class="col-md-3 text-end">
+                    <div class="btn-group" role="group">
+                        <a href="{% url 'skin_detector:prediction_detail' prediction.id %}" 
+                           class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-eye me-1"></i>
+                            Ver Detalle
+                        </a>
+                        
+                        {% if prediction.predicted_class %}
+                        <button class="btn btn-outline-success btn-sm" 
+                                onclick="quickShare({{ prediction.id }}, '{{ prediction.get_predicted_disease_name }}', {{ prediction.get_confidence_percentage }})">
+                            <i class="fas fa-share-alt me-1"></i>
+                        </button>
+                        {% endif %}
+                        
+                        <button class="btn btn-outline-danger btn-sm" 
+                                onclick="confirmSingleDelete({{ prediction.id }})">
+                            <i class="fas fa-trash me-1"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Barra de Confianza -->
+            {% if prediction.predicted_class %}
+            <div class="mt-2">
+                <div class="progress" style="height: 4px;">
+                    <div class="progress-bar 
+                        {% if prediction.get_confidence_percentage >= 80 %}bg-success
+                        {% elif prediction.get_confidence_percentage >= 60 %}bg-warning
+                        {% else %}bg-danger{% endif %}" 
+                        style="width: {{ prediction.get_confidence_percentage }}%"></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Paginación -->
+{% if page_obj %}
+<div class="d-flex justify-content-between align-items-center mt-4">
+    <div>
+        <p class="text-muted mb-0">
+            Mostrando {{ page_obj.start_index }} - {{ page_obj.end_index }} de {{ page_obj.paginator.count }} resultados
+        </p>
+    </div>
+    
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Paginación">
+        <ul class="pagination mb-0">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.predicted_class %}&predicted_class={{ request.GET.predicted_class }}{% endif %}">
+                    <i class="fas fa-angle-double-left"></i>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.predicted_class %}&predicted_class={{ request.GET.predicted_class }}{% endif %}">
+                    <i class="fas fa-angle-left"></i>
+                </a>
+            </li>
+            {% endif %}
+            
+            {% for page_num in page_obj.paginator.page_range %}
+                {% if page_num == page_obj.number %}
+                <li class="page-item active">
+                    <span class="page-link">{{ page_num }}</span>
+                </li>
+                {% elif page_num > page_obj.number|add:'-3' and page_num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_num }}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.predicted_class %}&predicted_class={{ request.GET.predicted_class }}{% endif %}">
+                        {{ page_num }}
+                    </a>
+                </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.predicted_class %}&predicted_class={{ request.GET.predicted_class }}{% endif %}">
+                    <i class="fas fa-angle-right"></i>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.predicted_class %}&predicted_class={{ request.GET.predicted_class }}{% endif %}">
+                    <i class="fas fa-angle-double-right"></i>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<!-- Estado Vacío -->
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="fas fa-history fa-4x text-muted mb-4"></i>
+        <h3>No se encontraron análisis</h3>
+        {% if request.GET %}
+        <p class="text-muted mb-4">No hay análisis que coincidan con los filtros aplicados.</p>
+        <a href="{% url 'skin_detector:history' %}" class="btn btn-secondary me-2">
+            <i class="fas fa-times me-2"></i>Limpiar Filtros
+        </a>
+        {% else %}
+        <p class="text-muted mb-4">Aún no ha realizado ningún análisis de detección de enfermedades cutáneas.</p>
+        {% endif %}
+        <a href="{% url 'skin_detector:home' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Realizar Primer Análisis
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedPredictions = new Set();
+
+function toggleAllSelections() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.prediction-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+        if (selectAll.checked) {
+            selectedPredictions.add(checkbox.value);
+        } else {
+            selectedPredictions.delete(checkbox.value);
+        }
+    });
+    
+    updateBulkActions();
+}
+
+function updateBulkActions() {
+    const checkboxes = document.querySelectorAll('.prediction-checkbox:checked');
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+    
+    selectedPredictions.clear();
+    checkboxes.forEach(checkbox => {
+        selectedPredictions.add(checkbox.value);
+    });
+    
+    bulkDeleteBtn.disabled = selectedPredictions.size === 0;
+    
+    // Actualizar estado del "Seleccionar Todos"
+    const selectAll = document.getElementById('selectAll');
+    const totalCheckboxes = document.querySelectorAll('.prediction-checkbox');
+    selectAll.checked = checkboxes.length === totalCheckboxes.length && totalCheckboxes.length > 0;
+}
+
+function bulkDelete() {
+    if (selectedPredictions.size === 0) return;
+    
+    const count = selectedPredictions.size;
+    const message = `¿Está seguro de que desea eliminar ${count} análisis seleccionados? Esta acción no se puede deshacer.`;
+    
+    if (confirm(message)) {
+        // Aquí implementarías la llamada AJAX para eliminar
+        alert(`Funcionalidad de eliminación múltiple no implementada aún (${count} elementos)`);
+    }
+}
+
+function confirmSingleDelete(predictionId) {
+    if (confirm('¿Está seguro de que desea eliminar este análisis? Esta acción no se puede deshacer.')) {
+        // Aquí implementarías la llamada AJAX para eliminar
+        alert(`Funcionalidad de eliminación no implementada aún (ID: ${predictionId})`);
+    }
+}
+
+function quickShare(id, disease, confidence) {
+    const text = `Resultado de análisis de piel: ${disease} (${confidence}% confianza)`;
+    const url = `${window.location.origin}/prediction/${id}/`;
+    
+    if (navigator.share) {
+        navigator.share({
+            title: 'Resultado de Análisis de Piel',
+            text: text,
+            url: url
+        });
+    } else {
+        navigator.clipboard.writeText(url).then(function() {
+            alert('Enlace copiado al portapapeles');
+        });
+    }
+}
+
+// Inicializar al cargar la página
+$(document).ready(function() {
+    // Configurar fechas por defecto
+    const today = new Date().toISOString().split('T')[0];
+    const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
+    if (!$('#dateFrom').val()) {
+        $('#dateFrom').val(monthAgo);
+    }
+    if (!$('#dateTo').val()) {
+        $('#dateTo').val(today);
+    }
+});
+</script>
+{% endblock %}
