@@ -28,6 +28,11 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
+        /* Excepto para la landing page */
+        body.landing-page {
+            background: white !important;
+        }
+        
         .navbar-brand {
             font-weight: bold;
             font-size: 1.5rem;
@@ -156,9 +161,9 @@
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: var(--primary-color);">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'skin_detector:home' %}">
+            <a class="navbar-brand" href="{% url 'skin_detector:landing' %}">
                 <i class="fas fa-microscope me-2"></i>
-                SkinAI Detector
+                DermatologIA
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -168,8 +173,13 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'skin_detector:home' %}">
+                        <a class="nav-link" href="{% url 'skin_detector:landing' %}">
                             <i class="fas fa-home me-1"></i>Inicio
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'skin_detector:diagnostico' %}">
+                            <i class="fas fa-camera me-1"></i>Diagnóstico
                         </a>
                     </li>
                     <li class="nav-item">
@@ -188,6 +198,7 @@
     </nav>
 
     <!-- Main Content -->
+    {% block main_wrapper %}
     <main class="container my-5">
         <!-- Messages -->
         {% if messages %}
@@ -206,6 +217,7 @@
         
         {% block content %}{% endblock %}
     </main>
+    {% endblock main_wrapper %}
 
     <!-- Footer -->
     <footer class="footer mt-5">

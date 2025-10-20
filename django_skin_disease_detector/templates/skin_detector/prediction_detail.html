@@ -1,8 +1,10 @@
 {% extends 'skin_detector/base.html' %}
+{% load static %}
 
 {% block title %}{{ title }} - Detalle de Predicción{% endblock %}
 
 {% block content %}
+{% csrf_token %}
 <div class="row">
     <!-- Imagen y Resultado Principal -->
     <div class="col-lg-8">
@@ -166,34 +168,510 @@
         
         <!-- Información Médica -->
         {% if prediction.predicted_class %}
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header" style="background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);">
+                <h5 class="mb-0 text-white">
                     <i class="fas fa-stethoscope me-2"></i>
-                    Información Médica
+                    Información Médica Detallada
                 </h5>
             </div>
             <div class="card-body">
                 {% with top_predictions.0 as main_pred %}
-                <h6><i class="fas fa-info-circle me-2"></i>Descripción:</h6>
-                <p class="mb-3">{{ main_pred.disease_info.description }}</p>
                 
-                <h6><i class="fas fa-clipboard-list me-2"></i>Recomendación:</h6>
-                <div class="alert 
-                    {% if main_pred.disease_info.severity == 'Muy Alta' %}alert-danger
-                    {% elif main_pred.disease_info.severity == 'Alta' %}alert-warning
-                    {% else %}alert-info{% endif %}">
-                    {{ main_pred.disease_info.recommendation }}
+                <!-- Descripción Clínica -->
+                <div class="mb-4">
+                    <h6 class="text-primary mb-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Descripción Clínica
+                    </h6>
+                    
+                    {% if main_pred.disease_code == 'MEL' %}
+                    <p class="text-muted mb-2"><strong>Nombre completo:</strong> Melanoma Maligno</p>
+                    <p>El <strong>melanoma</strong> es el tipo más agresivo de cáncer de piel, originado en los melanocitos (células productoras de pigmento). Representa solo el 1% de los cánceres cutáneos pero causa la mayoría de muertes por cáncer de piel. Se caracteriza por lesiones asimétricas con bordes irregulares, múltiples colores, y diámetro superior a 6mm.</p>
+                    <div class="alert alert-danger mt-2">
+                        <strong><i class="fas fa-exclamation-triangle me-2"></i>Regla ABCDE del Melanoma:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>A</strong>simetría - Una mitad diferente a la otra</li>
+                            <li><strong>B</strong>ordes - Irregulares, dentados o mal definidos</li>
+                            <li><strong>C</strong>olor - Variado (negro, marrón, rojo, blanco, azul)</li>
+                            <li><strong>D</strong>iámetro - Mayor a 6mm (tamaño de un borrador de lápiz)</li>
+                            <li><strong>E</strong>volución - Cambios en tamaño, forma o color</li>
+                        </ul>
+                    </div>
+                    
+                    {% elif main_pred.disease_code == 'BCC' %}
+                    <p class="text-muted mb-2"><strong>Nombre completo:</strong> Carcinoma Basocelular (Carcinoma de Células Basales)</p>
+                    <p>El <strong>carcinoma basocelular</strong> representa el 80% de todos los cánceres de piel, pero tiene excelente pronóstico. Se origina en las células basales de la epidermis. Crece muy lentamente y raramente hace metástasis (<0.1% de casos). Es causado principalmente por exposición solar acumulativa.</p>
+                    <div class="alert alert-warning mt-2">
+                        <strong><i class="fas fa-info-circle me-2"></i>Presentaciones clínicas comunes:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>Nodular</strong> (60%): Nódulo perlado, translúcido con telangiectasias (vasos visibles)</li>
+                            <li><strong>Superficial</strong> (30%): Placa rojiza, escamosa, bordes elevados</li>
+                            <li><strong>Morfea</strong> (10%): Placa indurada, color piel, apariencia cicatricial</li>
+                            <li>Puede sangrar fácilmente con trauma mínimo</li>
+                        </ul>
+                    </div>
+                    
+                    {% elif main_pred.disease_code == 'AKIEC' %}
+                    <p class="text-muted mb-2"><strong>Nombre completo:</strong> Queratosis Actínica (AK) / Carcinoma Intraepitelial (Bowen)</p>
+                    <p>Las <strong>queratosis actínicas</strong> son lesiones precancerosas (displasia intraepitelial) causadas por daño solar acumulativo. El 5-10% pueden progresar a carcinoma escamoso invasivo en 10-20 años si no se tratan. Son extremadamente comunes en personas mayores de 50 años con piel clara.</p>
+                    <div class="alert alert-warning mt-2">
+                        <strong><i class="fas fa-sun me-2"></i>Características diagnósticas:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>Textura:</strong> "Se siente mejor que se ve" - superficie áspera, granulosa, como papel de lija</li>
+                            <li><strong>Color:</strong> Eritematoso (rojo-rosado) o pigmentado (marrón)</li>
+                            <li><strong>Tamaño:</strong> Variable 2-10mm, frecuentemente múltiples</li>
+                            <li><strong>Localización:</strong> Zonas fotoexpuestas (cara, orejas, dorso manos, cuero cabelludo en calvos)</li>
+                            <li><strong>Campo de cancerización:</strong> Piel circundante muestra daño solar (elastosis, discromía)</li>
+                        </ul>
+                    </div>
+                    
+                    {% elif main_pred.disease_code == 'BKL' %}
+                    <p class="text-muted mb-2"><strong>Nombre completo:</strong> Queratosis Seborreica (Seborréica) - Lesión Benigna</p>
+                    <p>Las <strong>queratosis seborreicas</strong> son los tumores benignos cutáneos más comunes. Aparecen en casi todos los adultos mayores de 50 años. No tienen potencial maligno y no están relacionadas con cáncer de piel. Son completamente inofensivas, aunque pueden ser cosméticamente indeseables.</p>
+                    <div class="alert alert-success mt-2">
+                        <strong><i class="fas fa-check-circle me-2"></i>Características distintivas:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>Apariencia "pegada":</strong> Como si estuvieran adheridas sobre la piel</li>
+                            <li><strong>Superficie:</strong> Verrugosa, cerosa, con quistes córneos (puntos blancos)</li>
+                            <li><strong>Color:</strong> Marrón claro a negro, generalmente uniforme</li>
+                            <li><strong>Bordes:</strong> Bien delimitados, nítidos</li>
+                            <li><strong>Evolución:</strong> Crecimiento muy lento durante años</li>
+                            <li><strong>"Signo de la uña":</strong> Se puede raspar la superficie (no hacerlo en casa)</li>
+                        </ul>
+                    </div>
+                    
+                    {% elif main_pred.disease_code == 'NV' %}
+                    <p class="text-muted mb-2"><strong>Nombre completo:</strong> Nevo Melanocítico (Lunar Común Benigno)</p>
+                    <p>Los <strong>nevos melanocíticos</strong> son proliferaciones benignas de melanocitos que forman lunares. La persona promedio tiene 10-40 nevos. Son completamente benignos pero requieren monitoreo, especialmente en personas con >50 lunares o antecedentes familiares de melanoma (riesgo aumentado).</p>
+                    <div class="alert alert-success mt-2">
+                        <strong><i class="fas fa-check-circle me-2"></i>Características de nevos benignos:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>Simetría:</strong> Ambas mitades son iguales</li>
+                            <li><strong>Bordes:</strong> Regulares, bien definidos, redondeados</li>
+                            <li><strong>Color:</strong> Uniforme (marrón claro, oscuro o negro, pero homogéneo)</li>
+                            <li><strong>Diámetro:</strong> Generalmente menor a 6mm</li>
+                            <li><strong>Estabilidad:</strong> Sin cambios en tamaño, forma o color durante años</li>
+                            <li><strong>Tipos:</strong> Juncional (plano), compuesto, dérmico (elevado)</li>
+                        </ul>
+                    </div>
+                    
+                    {% elif main_pred.disease_code == 'VASC' %}
+                    <p class="text-muted mb-2"><strong>Nombre completo:</strong> Lesiones Vasculares Benignas (Angiomas/Hemangiomas)</p>
+                    <p>Las <strong>lesiones vasculares</strong> son proliferaciones benignas de vasos sanguíneos. Son extremadamente comunes y completamente inofensivas. Incluyen angiomas cereza (>90% de adultos >30 años), hemangiomas, lagos venosos, telangiectasias y angiomas en araña.</p>
+                    <div class="alert alert-info mt-2">
+                        <strong><i class="fas fa-heart me-2"></i>Tipos principales y características:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>Angioma cereza:</strong> Pápulas rojas brillantes 1-4mm, muy común con la edad</li>
+                            <li><strong>Hemangioma:</strong> "Marca de fresa", común en bebés, involuciona espontáneamente</li>
+                            <li><strong>Lago venoso:</strong> Pápula azul-púrpura en labios/orejas de ancianos</li>
+                            <li><strong>Telangiectasia:</strong> Vasos dilatados, líneas rojas finas</li>
+                            <li><strong>Prueba diagnóstica:</strong> Diascopia positiva (blanquean con presión de vidrio)</li>
+                        </ul>
+                    </div>
+                    
+                    {% elif main_pred.disease_code == 'DF' %}
+                    <p class="text-muted mb-2"><strong>Nombre completo:</strong> Dermatofibroma (Histiocitoma Fibroso Benigno)</p>
+                    <p>Los <strong>dermatofibromas</strong> son nódulos fibrosos benignos muy comunes, especialmente en mujeres jóvenes. Frecuentemente aparecen en piernas tras trauma menor (picadura de insecto, lesión). Son proliferaciones reactivas de fibroblastos, completamente inofensivos y sin potencial maligno.</p>
+                    <div class="alert alert-success mt-2">
+                        <strong><i class="fas fa-check-circle me-2"></i>Características diagnósticas:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>"Signo del hoyuelo":</strong> Patognomónico - al pellizcar lateralmente se hunde hacia adentro</li>
+                            <li><strong>Consistencia:</strong> Nódulo firme, duro, bien adherido a piel</li>
+                            <li><strong>Color:</strong> Marrón-rojizo, hiperpigmentación periférica</li>
+                            <li><strong>Tamaño:</strong> 5-10mm típicamente, crece muy lentamente</li>
+                            <li><strong>Localización:</strong> 80% en piernas, puede aparecer en cualquier sitio</li>
+                            <li><strong>Evolución:</strong> Permanece estable o crece mínimamente durante años</li>
+                        </ul>
+                    </div>
+                    
+                    {% else %}
+                    <p>{{ main_pred.disease_info.description }}</p>
+                    {% endif %}
                 </div>
                 
-                <h6><i class="fas fa-exclamation-triangle me-2"></i>Nivel de Severidad:</h6>
-                <span class="severity-badge 
-                    {% if main_pred.disease_info.severity == 'Baja' %}severity-baja
-                    {% elif main_pred.disease_info.severity == 'Moderada' %}severity-moderada
-                    {% elif main_pred.disease_info.severity == 'Alta' %}severity-alta
-                    {% else %}severity-muy-alta{% endif %} text-white">
-                    {{ main_pred.disease_info.severity }}
-                </span>
+                <!-- Recomendaciones Específicas -->
+                <div class="mb-4">
+                    <h6 class="text-primary mb-3">
+                        <i class="fas fa-clipboard-list me-2"></i>
+                        Recomendaciones y Plan de Acción
+                    </h6>
+                    
+                    <div class="alert 
+                        {% if main_pred.disease_info.severity == 'Muy Alta' %}alert-danger
+                        {% elif main_pred.disease_info.severity == 'Alta' %}alert-warning
+                        {% else %}alert-info{% endif %} mb-3">
+                        
+                        {% if main_pred.disease_code == 'MEL' %}
+                        <h6 class="alert-heading"><i class="fas fa-ambulance me-2"></i>⚠️ ACCIÓN INMEDIATA REQUERIDA</h6>
+                        <p class="mb-2"><strong>Esta lesión requiere evaluación dermatológica URGENTE.</strong></p>
+                        
+                        <div class="mb-3">
+                            <strong>Pasos inmediatos (próximas 24-48 horas):</strong>
+                            <ol class="mb-0 mt-1">
+                                <li><strong>Contactar dermatólogo especializado en cáncer de piel</strong> - Solicitar cita urgente</li>
+                                <li><strong>Preparar información:</strong> Cuándo notó la lesión, cambios observados, síntomas (sangrado, picazón)</li>
+                                <li><strong>Historial médico:</strong> Antecedentes familiares de melanoma, quemaduras solares previas</li>
+                                <li><strong>Fotografiar la lesión</strong> con regla/objeto para escala - No cubrir ni manipular</li>
+                                <li><strong>Protección solar SPF 50+</strong> - Cubrir área con ropa si es posible</li>
+                            </ol>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <strong>Procedimientos esperados en la consulta:</strong>
+                            <ul class="mb-0">
+                                <li><strong>Dermatoscopia:</strong> Examen con lente de aumento (indoloro)</li>
+                                <li><strong>Biopsia excisional:</strong> Extirpación completa para análisis patológico (procedimiento ambulatorio con anestesia local)</li>
+                                <li><strong>Mapeo corporal:</strong> Revisión de toda la piel para otras lesiones</li>
+                            </ul>
+                        </div>
+                        
+                        <p class="mb-0">
+                            <strong><i class="fas fa-heartbeat me-2"></i>Pronóstico con detección temprana:</strong>
+                            <br>
+                            • Melanoma in situ: 99% supervivencia<br>
+                            • Estadio I (<2mm grosor): 95-98% supervivencia a 5 años<br>
+                            • <strong>La detección temprana es crítica y salva vidas</strong>
+                        </p>
+                        
+                        {% elif main_pred.disease_code == 'BCC' %}
+                        <h6 class="alert-heading"><i class="fas fa-user-md me-2"></i>Evaluación Dermatológica Necesaria</h6>
+                        <p class="mb-2"><strong>Requiere atención médica, pero no es emergencia.</strong> El carcinoma basocelular crece lentamente.</p>
+                        
+                        <div class="mb-3">
+                            <strong>Plan de acción (próximas 2-4 semanas):</strong>
+                            <ol class="mb-0 mt-1">
+                                <li><strong>Agendar cita con dermatólogo</strong> - No urgente pero no postergar</li>
+                                <li><strong>Documentar la lesión:</strong> Fotografiar semanalmente para monitorear cambios</li>
+                                <li><strong>Protección solar estricta:</strong> SPF 50+ diario en área afectada</li>
+                                <li><strong>No automedicar:</strong> No aplicar cremas o remedios caseros</li>
+                        {% elif main_pred.disease_code == 'AKIEC' %}
+                        <h6 class="alert-heading"><i class="fas fa-shield-alt me-2"></i>Tratamiento Preventivo Recomendado</h6>
+                        <p class="mb-2"><strong>Lesión precancerosa que requiere tratamiento para prevenir progresión.</strong></p>
+                        
+                        <div class="mb-3">
+                            <strong>Plan de acción (próximas 4-8 semanas):</strong>
+                            <ol class="mb-0 mt-1">
+                                <li><strong>Consulta dermatológica</strong> - Evaluación y plan de tratamiento</li>
+                                <li><strong>Examen completo de piel</strong> - Las AKs raramente aparecen solas</li>
+                                <li><strong>Iniciar fotoprotección estricta</strong> desde ahora para prevenir nuevas lesiones</li>
+                                <li><strong>Fotografiar todas las lesiones rugosas</strong> en áreas expuestas al sol</li>
+                            </ol>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <strong>Opciones de tratamiento (según número y extensión):</strong>
+                            <ul class="mb-0">
+                                <li><strong>Criocirugía con nitrógeno líquido:</strong> Tratamiento estándar para lesiones aisladas (1-2 sesiones)</li>
+                                <li><strong>Cremas tópicas</strong> (para múltiples lesiones o áreas grandes):
+                                    <ul>
+                                        <li>5-Fluorouracilo (5-FU) 5% - 2-4 semanas de aplicación</li>
+                                        <li>Imiquimod 5% crema - 2-3 veces/semana por 12-16 semanas</li>
+                                        <li>Ingenol mebutato gel - 2-3 días de aplicación</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Terapia fotodinámica (PDT):</strong> Sesiones en consultorio, excelentes resultados cosméticos</li>
+                                <li><strong>Peeling químico:</strong> Para campo de cancerización extenso</li>
+                                <li><strong>Dermoabrasión/Laser CO2:</strong> Casos seleccionados</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <strong><i class="fas fa-sun me-2"></i>Fotoprotección rigurosa (CRÍTICA para prevenir nuevas lesiones):</strong>
+                            <ul class="mb-0">
+                                <li>Protector solar SPF 50+ de amplio espectro - Reaplicar cada 2 horas</li>
+                                <li>Evitar sol entre 10am-4pm (pico de radiación UV)</li>
+                                <li>Ropa fotoprotectora: Sombreros ala ancha (>7cm), mangas largas, lentes UV</li>
+                                <li>Buscar sombra activamente</li>
+                            </ul>
+                        </div>
+                        
+                        <p class="mb-0">
+                            <strong><i class="fas fa-info-circle me-2"></i>Información importante:</strong>
+                            5-10% progresan a carcinoma escamoso en 10-20 años si no se tratan. Tratamiento oportuno 
+                            previene esta progresión. Seguimiento dermatológico cada 6-12 meses recomendado.
+                        </p>
+                                <li><strong>Terapia fotodinámica:</strong> Luz + crema fotosensibilizante (lesiones superficiales múltiples)</li>
+                                <li><strong>Cremas tópicas:</strong> Imiquimod 5% (lesiones superficiales seleccionadas)</li>
+                            </ul>
+                        </div>
+                        
+                        <p class="mb-0">
+                            <strong><i class="fas fa-check-circle me-2"></i>Mensaje tranquilizador:</strong>
+                            Excelente pronóstico. Metástasis extremadamente raras (<0.1%). Tratamiento ambulatorio bien tolerado. 
+                            El mayor riesgo es desarrollo de nuevos BCCs (40% en 5 años) → importancia de seguimiento anual.
+                        </p>
+                        
+                        {% elif main_pred.disease_code == 'AKIEC' %}
+                        <h6 class="alert-heading"><i class="fas fa-shield-alt me-2"></i>Prevención de Progresión</h6>
+                        <ul class="mb-2">
+                            <li><strong>Consulta dermatológica recomendada</strong> - Dentro de 4-8 semanas</li>
+                            <li>Tratamiento tópico disponible (cremas con imiquimod, 5-FU)</li>
+                            <li>Opciones: criocirugía, terapia fotodinámica, peeling químico</li>
+                            <li><strong>Protección solar rigurosa</strong> - SPF 50+ diario, ropa protectora</li>
+                            <li>Seguimiento regular para prevenir progresión a carcinoma escamoso</li>
+                        </ul>
+                        <p class="mb-0"><strong>Prevención:</strong> Evitar exposición solar entre 10am-4pm, uso de sombreros de ala ancha.</p>
+                        
+                        {% elif main_pred.disease_code == 'BKL' %}
+                        <h6 class="alert-heading"><i class="fas fa-check-circle me-2"></i>✓ Lesión Benigna - Monitoreo Opcional</h6>
+                        <p class="mb-2"><strong>No requiere tratamiento médico.</strong> Completamente benigna, sin riesgo de cáncer.</p>
+                        
+                        <div class="mb-3">
+                            <strong>¿Cuándo consultar con dermatólogo?</strong>
+                            <ul class="mb-0 mt-1">
+                                <li><strong>Cambios rápidos:</strong> Crecimiento acelerado en semanas (inusual)</li>
+                                <li><strong>Síntomas:</strong> Sangrado espontáneo, picazón intensa, inflamación</li>
+                                <li><strong>Irritación mecánica:</strong> Si se raspa frecuentemente con ropa/joyería</li>
+                                <li><strong>Preocupación estética:</strong> Si afecta apariencia y causa incomodidad psicológica</li>
+                                <li><strong>Duda diagnóstica:</strong> Si características no son típicas</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <strong>Opciones de remoción (solo si se desea, no por necesidad médica):</strong>
+                            <ul class="mb-0">
+                                <li><strong>Criocirugía:</strong> Congelación - Puede dejar hipopigmentación</li>
+                                <li><strong>Curetaje:</strong> Raspado con cureta (anestesia local) - Rápido, económico</li>
+                                <li><strong>Escisión quirúrgica:</strong> Si se desea confirmación histológica</li>
+                                <li><strong>Electrodesecación:</strong> Cauterización eléctrica</li>
+                                <li><strong>Laser ablativo:</strong> Resultados estéticos óptimos (más costoso)</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <strong>Monitoreo en casa:</strong>
+                            <ul class="mb-0">
+                                <li>Fotografiar con fecha para documentar estabilidad</li>
+                                <li>Autoexamen cada 3-6 meses</li>
+                                <li>No intentar remover en casa (riesgo de infección/cicatrices)</li>
+                            </ul>
+                        </div>
+                        
+                        <p class="mb-0">
+                            <strong><i class="fas fa-smile me-2"></i>Tranquilidad total:</strong>
+                            Las queratosis seborreicas son el "barniz" de la edad. No tienen potencial maligno. 
+                            Extremadamente comunes en >50 años. Examen dermatológico anual de rutina es suficiente.
+                        </p>
+                        
+                        {% elif main_pred.disease_code == 'NV' %}
+                        <h6 class="alert-heading"><i class="fas fa-eye me-2"></i>Vigilancia Activa y Monitoreo</h6>
+                        <p class="mb-2"><strong>Lunar benigno que requiere seguimiento regular.</strong> Mayoría permanecen estables toda la vida.</p>
+                        
+                        <div class="mb-3">
+                            <strong>Protocolo de autoexamen mensual (método ABCDE):</strong>
+                            <ol class="mb-0 mt-1">
+                                <li><strong>Establecer día fijo:</strong> Primer día del mes, luz natural, después de ducha</li>
+                                <li><strong>Equipo necesario:</strong> Espejo de mano + espejo de cuerpo completo, cámara, regla</li>
+                                <li><strong>Examinar sistemáticamente:</strong>
+                                    <ul>
+                                        <li>Cara, cuero cabelludo (con secador para separar pelo), orejas, cuello</li>
+                                        <li>Torso anterior y posterior, brazos (incluir axilas), manos, uñas</li>
+                                        <li>Piernas completas, pies (plantas, entre dedos), genitales, glúteos</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Aplicar regla ABCDE</strong> a cada lunar</li>
+                                <li><strong>Fotografiar lunares atípicos</strong> con referencia de escala</li>
+                            </ol>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <strong>¿Cuándo consultar al dermatólogo? (CUALQUIER cambio en):</strong>
+                            <ul class="mb-0">
+                                <li><strong>A</strong>simetría - Desarrollo de asimetría en lunar previamente simétrico</li>
+                                <li><strong>B</strong>ordes - Bordes se vuelven irregulares, dentados</li>
+                                <li><strong>C</strong>olor - Aparición de múltiples colores o cambio de tonalidad</li>
+                                <li><strong>D</strong>iámetro - Crecimiento >6mm o crecimiento rápido</li>
+                                <li><strong>E</strong>volución - Cualquier cambio en últimos 2-3 meses</li>
+                                <li><strong>Síntomas nuevos:</strong> Picazón, dolor, sangrado, costras</li>
+                                <li><strong>Lunar nuevo después de 40 años:</strong> Merece evaluación</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <strong>Factores de mayor vigilancia (consulta dermatológica anual):</strong>
+                            <ul class="mb-0">
+                                <li>Más de 50 lunares en total</li>
+                                <li>Lunares atípicos (>5mm, bordes irregulares)</li>
+                                <li>Historia familiar de melanoma</li>
+                                <li>Historia personal de quemaduras solares severas</li>
+                                <li>Piel muy clara (fototipos I-II), ojos claros, pecas</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <strong>Prevención:</strong>
+                            <ul class="mb-0">
+                                <li>Protector solar SPF 30+ diario (incluso días nublados)</li>
+                                <li>Evitar camas de bronceado (aumentan riesgo melanoma 75%)</li>
+                                <li>Ropa protectora en actividades al aire libre</li>
+                            </ul>
+                        </div>
+                        
+                        <p class="mb-0">
+                            <strong><i class="fas fa-mobile-alt me-2"></i>Tecnología de apoyo:</strong>
+                            Apps recomendadas: Miiskin, SkinVision, MoleMapper - Para fotografía seriada y alertas de seguimiento.
+                            No reemplazan evaluación médica profesional.
+                        </p>
+                        
+                        {% elif main_pred.disease_code == 'VASC' %}
+                        <h6 class="alert-heading"><i class="fas fa-heartbeat me-2"></i>✓ Lesión Vascular Benigna</h6>
+                        <p class="mb-2"><strong>No requiere tratamiento médico.</strong> Condición benigna, tratamiento solo por razones estéticas.</p>
+                        
+                        <div class="mb-3">
+                            <strong>¿Cuándo consultar? (signos atípicos que ameritan evaluación):</strong>
+                            <ul class="mb-0 mt-1">
+                                <li><strong>Crecimiento rápido:</strong> Aumento significativo de tamaño en semanas</li>
+                                <li><strong>Sangrado espontáneo o frecuente:</strong> Sin trauma previo</li>
+                                <li><strong>Dolor persistente:</strong> Molestia no asociada a trauma</li>
+                                <li><strong>Cambio de color:</strong> De rojo brillante a negro/púrpura oscuro</li>
+                                <li><strong>Úlceración:</strong> Desarrollo de herida abierta</li>
+                                <li><strong>Pulsatilidad intensa:</strong> Con latido sincrónico al pulso</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <strong>Opciones de tratamiento cosmético (electivo, no necesario):</strong>
+                            <ul class="mb-0">
+                                <li><strong>Láser vascular (PDL - Pulsed Dye Laser):</strong>
+                                    <ul>
+                                        <li>Gold standard para lesiones vasculares</li>
+                                        <li>2-4 sesiones típicamente, separadas 4-6 semanas</li>
+                                        <li>Targeting selectivo de hemoglobina, mínimo daño a tejido circundante</li>
+                                        <li>Moretón temporal 7-10 días post-tratamiento</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Electrocoagulación/Cauterización:</strong> Para angiomas cereza pequeños (procedimiento rápido)</li>
+                                <li><strong>Escleroterapia:</strong> Para lagos venosos (inyección de agente esclerosante)</li>
+                                <li><strong>Criocirugía:</strong> Congelación (menos preferida, puede dejar cicatriz)</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <strong>Información general:</strong>
+                            <ul class="mb-0">
+                                <li><strong>Angiomas cereza:</strong> Aumentan con edad (normal), pueden aparecer docenas/cientos</li>
+                                <li><strong>Hemangiomas infantiles:</strong> 90% involucionan espontáneamente antes de 9 años - "espera vigilante"</li>
+                                <li><strong>No requieren seguimiento médico</strong> a menos que síntomas atípicos</li>
+                                <li><strong>Prevención:</strong> No existe (no relacionado con factores de estilo de vida)</li>
+                            </ul>
+                        </div>
+                        
+                        <p class="mb-0">
+                            <strong><i class="fas fa-smile me-2"></i>Mensaje tranquilizador:</strong>
+                            Las lesiones vasculares son extremadamente comunes (>90% adultos >30 años tienen angiomas cereza). 
+                            Totalmente benignas, sin riesgo de malignidad. Tratamiento es puramente cosmético y opcional.
+                        </p>
+                        
+                        {% elif main_pred.disease_code == 'DF' %}
+                        <h6 class="alert-heading"><i class="fas fa-check-circle me-2"></i>✓ Lesión Benigna - Observación</h6>
+                        <p class="mb-2"><strong>No requiere tratamiento médico.</strong> Completamente benigno, sin potencial maligno.</p>
+                        
+                        <div class="mb-3">
+                            <strong>¿Cuándo considerar remoción? (todas opcionales):</strong>
+                            <ul class="mb-0 mt-1">
+                                <li><strong>Molestia física:</strong> Dolor al contacto, fricción con ropa/calzado</li>
+                                <li><strong>Trauma frecuente:</strong> Lesión repetida durante actividades (afeitado, deportes)</li>
+                                <li><strong>Preocupación cosmética:</strong> Ubicación visible que causa incomodidad</li>
+                                <li><strong>Crecimiento atípico:</strong> Aumento rápido de tamaño (poco común, amerita biopsia)</li>
+                                <li><strong>Duda diagnóstica:</strong> Si características no son típicas del "signo del hoyuelo"</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <strong>Opciones de remoción (si se desea):</strong>
+                            <ul class="mb-0">
+                                <li><strong>Escisión quirúrgica:</strong>
+                                    <ul>
+                                        <li>Procedimiento ambulatorio con anestesia local (15-20 min)</li>
+                                        <li>Permite confirmación histológica</li>
+                                        <li>Cicatriz resultante suele ser más grande que la lesión original</li>
+                                        <li>Advertencia: Cicatriz puede ser más notoria que el dermatofibroma</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Criocirugía:</strong> Puede aplanar la lesión pero raramente la elimina completamente</li>
+                                <li><strong>Inyección de corticoides intralesional:</strong> Puede reducir tamaño/altura</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <strong>Manejo expectante (recomendado en mayoría de casos):</strong>
+                            <ul class="mb-0">
+                                <li>Observación sin intervención - Enfoque más común</li>
+                                <li>Fotografiar con fecha para documentar estabilidad</li>
+                                <li>No requiere seguimiento médico regular</li>
+                                <li>Puede persistir sin cambios por décadas</li>
+                                <li>Algunos involucionan parcialmente con el tiempo</li>
+                            </ul>
+                        </div>
+                        
+                        <p class="mb-0">
+                            <strong><i class="fas fa-info-circle me-2"></i>Información clave:</strong>
+                            Los dermatofibromas son proliferaciones reactivas benignas, frecuentemente post-trauma menor. 
+                            Muy comunes en mujeres jóvenes. Zero riesgo de malignidad. La mayoría de dermatólogos recomienda 
+                            "dejar en paz" a menos que cause molestia física significativa.
+                        </p>
+                        
+                        {% else %}
+                        <p>{{ main_pred.disease_info.recommendation }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Nivel de Severidad y Prioridad -->
+                <div class="row mb-3">
+                    <div class="col-md-6 mb-3">
+                        <h6 class="text-primary mb-3">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Nivel de Severidad
+                        </h6>
+                        <div>
+                            <span class="severity-badge 
+                                {% if main_pred.disease_info.severity == 'Baja' %}severity-baja
+                                {% elif main_pred.disease_info.severity == 'Moderada' %}severity-moderada
+                                {% elif main_pred.disease_info.severity == 'Alta' %}severity-alta
+                                {% else %}severity-muy-alta{% endif %} text-white px-3 py-2 rounded d-inline-block">
+                                <i class="fas fa-circle me-2"></i>{{ main_pred.disease_info.severity }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <h6 class="text-primary mb-3">
+                            <i class="fas fa-clock me-2"></i>
+                            Prioridad de Consulta
+                        </h6>
+                        <div>
+                            {% if main_pred.disease_code == 'MEL' %}
+                            <span class="badge bg-danger px-3 py-2 d-inline-block" style="font-size: 0.95rem;">
+                                <i class="fas fa-bolt me-2"></i>URGENTE - 24-48 Horas
+                            </span>
+                            {% elif main_pred.disease_code == 'BCC' or main_pred.disease_code == 'AKIEC' %}
+                            <span class="badge bg-warning text-dark px-3 py-2 d-inline-block" style="font-size: 0.95rem;">
+                                <i class="fas fa-calendar-alt me-2"></i>PRONTO - 2-8 Semanas
+                            </span>
+                            {% else %}
+                            <span class="badge bg-success px-3 py-2 d-inline-block" style="font-size: 0.95rem;">
+                                <i class="fas fa-calendar-check me-2"></i>RUTINA - Monitoreo Regular
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Información Adicional -->
+                <div class="mt-4 p-3 bg-light rounded">
+                    <h6 class="text-primary mb-2">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        Información Adicional
+                    </h6>
+                    <small class="text-muted">
+                        <strong>Nota importante:</strong> Este análisis es una herramienta de apoyo basada en inteligencia artificial. 
+                        NO sustituye el diagnóstico médico profesional. Siempre consulte con un dermatólogo certificado para 
+                        un diagnóstico definitivo y plan de tratamiento personalizado.
+                    </small>
+                </div>
+                
                 {% endwith %}
             </div>
         </div>
@@ -209,7 +687,7 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{% url 'skin_detector:home' %}" class="btn btn-primary">
+                    <a href="{% url 'skin_detector:diagnostico' %}" class="btn btn-primary">
                         <i class="fas fa-plus me-2"></i>
                         Nuevo Análisis
                     </a>
@@ -338,8 +816,29 @@ function shareResult() {
 
 function confirmDelete() {
     if (confirm('¿Está seguro de que desea eliminar este análisis? Esta acción no se puede deshacer.')) {
-        // Implementar eliminación
-        alert('Funcionalidad de eliminación no implementada aún');
+        const predictionId = {{ prediction.id }};
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch(`/delete/${predictionId}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Análisis eliminado exitosamente');
+                window.location.href = '{% url "skin_detector:history" %}';
+            } else {
+                alert('Error al eliminar el análisis: ' + (data.error || 'Error desconocido'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al eliminar el análisis. Por favor, intente de nuevo.');
+        });
     }
 }
 

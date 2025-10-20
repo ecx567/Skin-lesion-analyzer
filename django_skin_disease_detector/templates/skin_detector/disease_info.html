@@ -1,0 +1,408 @@
+{% extends 'skin_detector/base.html' %}
+{% load static %}
+
+{% block title %}{{ disease_name }} - Información Detallada{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Página de información de enfermedades */
+    body.disease-info-page {
+        background: white !important;
+        min-height: auto !important;
+    }
+
+    .disease-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 3rem 0;
+        margin: 0 !important;
+        width: 100%;
+    }
+
+    .disease-header h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 1rem;
+    }
+
+    .disease-header .breadcrumb {
+        background: transparent;
+        padding: 0;
+        margin: 0;
+    }
+
+    .disease-header .breadcrumb-item,
+    .disease-header .breadcrumb-item a {
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    .disease-header .breadcrumb-item.active {
+        color: white;
+    }
+
+    .disease-header .breadcrumb-item + .breadcrumb-item::before {
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* Search bar */
+    .search-section {
+        background: #f8f9fa;
+        padding: 2rem 0;
+        border-bottom: 1px solid #e2e8f0;
+        width: 100%;
+        margin: 0 !important;
+    }
+
+    .search-input {
+        border-radius: 30px;
+        padding: 0.8rem 1.5rem;
+        border: 2px solid #e2e8f0;
+        font-size: 1rem;
+    }
+
+    .search-input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+    /* Info cards */
+    .info-section {
+        padding: 3rem 0;
+        background: white;
+        width: 100%;
+        margin: 0 !important;
+    }
+
+    .info-card {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e2e8f0;
+        transition: all 0.3s ease;
+    }
+
+    .info-card:hover {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+
+    .info-card-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .info-card-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-right: 1rem;
+    }
+
+    .info-card-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin: 0;
+    }
+
+    .info-card-subtitle {
+        font-size: 0.9rem;
+        color: #718096;
+        margin: 0;
+    }
+
+    /* Lista con viñetas personalizadas */
+    .custom-list {
+        list-style: none;
+        padding-left: 0;
+    }
+
+    .custom-list li {
+        padding-left: 1.8rem;
+        position: relative;
+        margin-bottom: 0.8rem;
+        line-height: 1.6;
+    }
+
+    .custom-list li::before {
+        content: "•";
+        position: absolute;
+        left: 0.5rem;
+        color: #667eea;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+
+    /* Badges de ubicación y zonas */
+    .location-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+
+    .location-badge {
+        background: #f0f4ff;
+        color: #667eea;
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    /* Severity badges */
+    .severity-high {
+        background: #fee;
+        color: #c53030;
+    }
+
+    .severity-medium {
+        background: #fffaf0;
+        color: #c05621;
+    }
+
+    .severity-low {
+        background: #f0fff4;
+        color: #22543d;
+    }
+
+    /* Two column layout */
+    .two-column-section {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+    }
+
+    @media (max-width: 768px) {
+        .two-column-section {
+            grid-template-columns: 1fr;
+        }
+
+        .disease-header h1 {
+            font-size: 2rem;
+        }
+    }
+
+    /* Alert boxes */
+    .alert-custom {
+        border-left: 4px solid;
+        border-radius: 8px;
+        padding: 1.2rem;
+        margin: 1.5rem 0;
+    }
+
+    .alert-danger-custom {
+        background: #fff5f5;
+        border-color: #e53e3e;
+        color: #742a2a;
+    }
+
+    .alert-warning-custom {
+        background: #fffaf0;
+        border-color: #ed8936;
+        color: #7c2d12;
+    }
+
+    .alert-info-custom {
+        background: #ebf8ff;
+        border-color: #4299e1;
+        color: #2c5282;
+    }
+
+    .alert-success-custom {
+        background: #f0fff4;
+        border-color: #48bb78;
+        color: #22543d;
+    }
+</style>
+{% endblock %}
+
+{% block main_wrapper %}
+<script>
+    document.body.classList.add('disease-info-page');
+</script>
+
+<!-- Header -->
+<div class="disease-header">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'skin_detector:landing' %}"><i class="fas fa-home me-1"></i>Inicio</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'skin_detector:diagnostico' %}">Diagnóstico</a></li>
+                <li class="breadcrumb-item active">{{ disease_name }}</li>
+            </ol>
+        </nav>
+        <h1><i class="fas fa-info-circle me-3"></i>Información de Enfermedades</h1>
+        <p class="lead mb-0">Conoce más sobre las enfermedades dermatológicas que nuestro sistema puede detectar</p>
+    </div>
+</div>
+
+<!-- Search Section -->
+<div class="search-section">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0" style="border-radius: 30px 0 0 30px;">
+                        <i class="fas fa-search text-muted"></i>
+                        </span>
+                        <input type="text" class="form-control search-input border-start-0 ps-0" 
+                               placeholder="Buscar enfermedad por nombre o síntomas..."
+                               id="diseaseSearch">
+                        <select class="form-select" style="max-width: 200px; border-radius: 0 30px 30px 0;">
+                            <option>Todas las enfermedades</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disease Information -->
+    <div class="info-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-10 mx-auto">
+                    
+                    <!-- Main Disease Card -->
+                    <div class="info-card">
+                        <div class="info-card-header">
+                            <div class="info-card-icon" style="background: {{ disease_data.color_bg }}; color: {{ disease_data.color_text }};">
+                                {{ disease_data.icon }}
+                            </div>
+                            <div>
+                                <h2 class="info-card-title">{{ disease_data.full_name }}</h2>
+                                <p class="info-card-subtitle">{{ disease_data.code }}</p>
+                            </div>
+                        </div>
+                        <p class="lead">{{ disease_data.description }}</p>
+                    </div>
+
+                    <!-- Síntomas Comunes -->
+                    <div class="info-card">
+                        <div class="info-card-header">
+                            <div class="info-card-icon" style="background: #fef3c7; color: #92400e;">
+                                <i class="fas fa-clipboard-list"></i>
+                            </div>
+                            <div>
+                                <h3 class="info-card-title">Síntomas Comunes</h3>
+                            </div>
+                        </div>
+                        <ul class="custom-list">
+                            {% for symptom in disease_data.symptoms %}
+                            <li>{{ symptom }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <!-- Two Column Section: Ubicaciones y Características -->
+                    <div class="two-column-section">
+                        <!-- Ubicaciones Frecuentes -->
+                        <div class="info-card">
+                            <div class="info-card-header">
+                                <div class="info-card-icon" style="background: #dbeafe; color: #1e40af;">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </div>
+                                <div>
+                                    <h3 class="info-card-title">Ubicaciones Frecuentes</h3>
+                                </div>
+                            </div>
+                            <div class="location-badges">
+                                {% for location in disease_data.locations %}
+                                <span class="location-badge">{{ location }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Zonas Afectadas -->
+                        <div class="info-card">
+                            <div class="info-card-header">
+                                <div class="info-card-icon" style="background: #fed7d7; color: #9b2c2c;">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <div>
+                                    <h3 class="info-card-title">Zonas Afectadas</h3>
+                                </div>
+                            </div>
+                            <div class="location-badges">
+                                {% for zone in disease_data.zones %}
+                                <span class="location-badge">{{ zone }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tratamientos Disponibles -->
+                    <div class="info-card">
+                        <div class="info-card-header">
+                            <div class="info-card-icon" style="background: #d1fae5; color: #065f46;">
+                                <i class="fas fa-pills"></i>
+                            </div>
+                            <div>
+                                <h3 class="info-card-title">Tratamientos Disponibles</h3>
+                            </div>
+                        </div>
+                        <ul class="custom-list">
+                            {% for treatment in disease_data.treatments %}
+                            <li>{{ treatment }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <!-- Manejo y Prevención -->
+                    <div class="info-card">
+                        <div class="info-card-header">
+                            <div class="info-card-icon" style="background: #e0e7ff; color: #3730a3;">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <div>
+                                <h3 class="info-card-title">Manejo y Prevención</h3>
+                            </div>
+                        </div>
+                        <ul class="custom-list">
+                            {% for prevention in disease_data.prevention %}
+                            <li>{{ prevention }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <!-- Alert según severidad -->
+                    {% if disease_data.severity == 'high' %}
+                    <div class="alert-custom alert-danger-custom">
+                        <strong><i class="fas fa-ambulance me-2"></i>Importante:</strong> 
+                        {{ disease_data.alert_message }}
+                    </div>
+                    {% elif disease_data.severity == 'medium' %}
+                    <div class="alert-custom alert-warning-custom">
+                        <strong><i class="fas fa-exclamation-triangle me-2"></i>Atención:</strong> 
+                        {{ disease_data.alert_message }}
+                    </div>
+                    {% else %}
+                    <div class="alert-custom alert-success-custom">
+                        <strong><i class="fas fa-check-circle me-2"></i>Información:</strong> 
+                        {{ disease_data.alert_message }}
+                    </div>
+                    {% endif %}
+
+                    <!-- CTA Button -->
+                    <div class="text-center mt-4 mb-5">
+                        <a href="{% url 'skin_detector:diagnostico' %}" class="btn btn-primary btn-lg" style="border-radius: 30px; padding: 1rem 3rem;">
+                            <i class="fas fa-camera me-2"></i>
+                            Realizar Diagnóstico Ahora
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock main_wrapper %}

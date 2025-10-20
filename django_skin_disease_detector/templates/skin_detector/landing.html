@@ -1,0 +1,722 @@
+{% extends 'skin_detector/base.html' %}
+{% load static %}
+
+{% block title %}DermatologIA - Diagnóstico Inteligente de Piel{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Resetear estilos del body para landing */
+    body.landing-page {
+        background: white !important;
+        min-height: auto !important;
+    }
+
+    /* Hero Section */
+    .hero-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 90vh;
+        display: flex;
+        align-items: center;
+        color: white;
+        position: relative;
+        overflow: hidden;
+        margin: 0 !important;
+        padding: 3rem 0;
+    }
+
+    .hero-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        opacity: 0.3;
+    }
+
+    .hero-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .hero-title {
+        font-size: 3.5rem;
+        font-weight: 800;
+        margin-bottom: 1.5rem;
+        line-height: 1.2;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .hero-subtitle {
+        font-size: 1.3rem;
+        font-weight: 300;
+        margin-bottom: 2rem;
+        opacity: 0.95;
+        max-width: 600px;
+    }
+
+    .hero-badges {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 2.5rem;
+    }
+
+    .hero-badge {
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        padding: 0.6rem 1.5rem;
+        border-radius: 30px;
+        font-weight: 600;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        transition: all 0.3s ease;
+    }
+
+    .hero-badge:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+    }
+
+    .hero-badge i {
+        margin-right: 0.5rem;
+    }
+
+    .hero-buttons {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-hero-primary {
+        background: white;
+        color: #667eea;
+        padding: 1rem 2.5rem;
+        border-radius: 50px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        border: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        transition: all 0.3s ease;
+    }
+
+    .btn-hero-primary:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        color: #667eea;
+    }
+
+    .btn-hero-secondary {
+        background: transparent;
+        color: white;
+        padding: 1rem 2.5rem;
+        border-radius: 50px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        border: 3px solid white;
+        transition: all 0.3s ease;
+    }
+
+    .btn-hero-secondary:hover {
+        background: white;
+        color: #667eea;
+        transform: translateY(-3px);
+    }
+
+    .stats-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stats-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(45deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+        transform: rotate(45deg);
+    }
+
+    .stats-number {
+        font-size: 4rem;
+        font-weight: 800;
+        color: #667eea;
+        margin-bottom: 0.5rem;
+    }
+
+    .stats-label {
+        font-size: 1.1rem;
+        color: #6c757d;
+        font-weight: 600;
+    }
+
+    /* Diseases Section */
+    .diseases-section {
+        padding: 5rem 0;
+        background: #f8f9fa;
+    }
+
+    .section-title {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+
+    .section-title h2 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #2d3748;
+        margin-bottom: 1rem;
+    }
+
+    .section-title p {
+        font-size: 1.2rem;
+        color: #718096;
+    }
+
+    .disease-card {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        border: 2px solid #e2e8f0;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .disease-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        border-color: #667eea;
+    }
+
+    .disease-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    .disease-card h4 {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 1rem;
+    }
+
+    .disease-card p {
+        color: #718096;
+        margin-bottom: 1.5rem;
+        flex-grow: 1;
+    }
+
+    .btn-disease-detail {
+        background: #667eea;
+        color: white;
+        padding: 0.6rem 1.5rem;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-disease-detail:hover {
+        background: #5568d3;
+        color: white;
+        transform: scale(1.05);
+    }
+
+    /* How it Works Section */
+    .how-it-works-section {
+        padding: 5rem 0;
+        background: white;
+    }
+
+    .step-card {
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .step-number {
+        width: 70px;
+        height: 70px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        font-weight: 800;
+        margin: 0 auto 1.5rem;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .step-icon {
+        font-size: 3rem;
+        color: #667eea;
+        margin-bottom: 1rem;
+    }
+
+    .step-card h4 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 1rem;
+    }
+
+    .step-card p {
+        color: #718096;
+        font-size: 1rem;
+    }
+
+    /* Recent Diagnostics */
+    .recent-section {
+        padding: 5rem 0;
+        background: #f8f9fa;
+    }
+
+    .recent-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        transition: all 0.3s ease;
+        border: 2px solid #e2e8f0;
+        margin-bottom: 1rem;
+    }
+
+    .recent-card:hover {
+        transform: translateX(5px);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        border-color: #667eea;
+    }
+
+    .recent-disease-name {
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 0.3rem;
+    }
+
+    .recent-date {
+        font-size: 0.9rem;
+        color: #718096;
+    }
+
+    .recent-badge {
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    /* CTA Section */
+    .cta-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 5rem 0;
+        color: white;
+        text-align: center;
+    }
+
+    .cta-section h2 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 1.5rem;
+    }
+
+    .cta-section p {
+        font-size: 1.2rem;
+        margin-bottom: 2rem;
+        opacity: 0.95;
+    }
+
+    /* Disclaimer */
+    .disclaimer-section {
+        background: #fff3cd;
+        padding: 2rem 0;
+        border-top: 3px solid #ffc107;
+    }
+
+    .disclaimer-content {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .disclaimer-icon {
+        font-size: 2rem;
+        color: #ff9800;
+    }
+
+    .disclaimer-text {
+        color: #856404;
+    }
+
+    .disclaimer-text strong {
+        font-weight: 700;
+    }
+
+    /* Footer */
+    .footer {
+        background: #2d3748;
+        color: white;
+        padding: 2rem 0;
+        text-align: center;
+    }
+
+    .footer p {
+        margin: 0;
+        opacity: 0.8;
+    }
+
+    .footer-links {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin-top: 1rem;
+    }
+
+    .footer-link {
+        color: white;
+        text-decoration: none;
+        opacity: 0.8;
+        transition: opacity 0.3s ease;
+    }
+
+    .footer-link:hover {
+        opacity: 1;
+        color: white;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .hero-title {
+            font-size: 2.5rem;
+        }
+
+        .hero-subtitle {
+            font-size: 1.1rem;
+        }
+
+        .hero-buttons {
+            flex-direction: column;
+        }
+
+        .btn-hero-primary,
+        .btn-hero-secondary {
+            width: 100%;
+            text-align: center;
+        }
+
+        .stats-number {
+            font-size: 3rem;
+        }
+
+        .section-title h2 {
+            font-size: 2rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block main_wrapper %}
+<script>
+    // Agregar clase al body para la landing page
+    document.body.classList.add('landing-page');
+</script>
+
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-7 hero-content">
+                <h1 class="hero-title">
+                    <i class="fas fa-microscope me-3"></i>
+                    Diagnóstico Dermatológico con IA
+                </h1>
+                <p class="hero-subtitle">
+                    Sistema avanzado de inteligencia artificial para el análisis y diagnóstico de 
+                    enfermedades en la piel. Obtén resultados precisos en segundos
+                </p>
+                
+                <div class="hero-badges">
+                    <span class="hero-badge">
+                        <i class="fas fa-check-circle"></i>
+                        92% Precisión
+                    </span>
+                    <span class="hero-badge">
+                        <i class="fas fa-bolt"></i>
+                        Resultados Inmediatos
+                    </span>
+                    <span class="hero-badge">
+                        <i class="fas fa-shield-alt"></i>
+                        Seguro y Confiable
+                    </span>
+                </div>
+
+                <div class="hero-buttons">
+                    <a href="{% url 'skin_detector:diagnostico' %}" class="btn btn-hero-primary">
+                        <i class="fas fa-camera me-2"></i>
+                        Realizar Diagnóstico
+                    </a>
+                    <a href="#about" class="btn btn-hero-secondary">
+                        Acerca de
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-lg-5 mt-5 mt-lg-0">
+                <div class="stats-card">
+                    <div class="stats-number">{{ total_predictions }}</div>
+                    <div class="stats-label">Diagnósticos Realizados</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Diseases Section -->
+<section class="diseases-section" id="diseases">
+    <div class="container">
+        <div class="section-title">
+            <h2>
+                <i class="fas fa-list-check me-3"></i>
+                Enfermedades Detectables
+            </h2>
+            <p>Nuestro sistema puede identificar y diagnosticar las siguientes condiciones de la piel</p>
+        </div>
+
+        <div class="row g-4">
+            <!-- Melanoma (MEL) -->
+            <div class="col-md-6 col-lg-4">
+                <div class="disease-card">
+                    <div class="disease-icon" style="color: #e74c3c;">⚫</div>
+                    <h4>Melanoma</h4>
+                    <p>Tipo más grave de cáncer de piel que se desarrolla en los melanocitos. Requiere atención urgente.</p>
+                    <a href="{% url 'skin_detector:disease_info' 'mel' %}" class="btn-disease-detail">
+                        Ver Detalles
+                    </a>
+                </div>
+            </div>
+
+            <!-- Carcinoma Basocelular (BCC) -->
+            <div class="col-md-6 col-lg-4">
+                <div class="disease-card">
+                    <div class="disease-icon" style="color: #f39c12;">⚠️</div>
+                    <h4>Carcinoma Basocelular</h4>
+                    <p>Tipo más común de cáncer de piel. Crece lentamente y raramente hace metástasis.</p>
+                    <a href="{% url 'skin_detector:disease_info' 'bcc' %}" class="btn-disease-detail">
+                        Ver Detalles
+                    </a>
+                </div>
+            </div>
+
+            <!-- Queratosis Actínica (AKIEC) -->
+            <div class="col-md-6 col-lg-4">
+                <div class="disease-card">
+                    <div class="disease-icon" style="color: #e67e22;">🔥</div>
+                    <h4>Queratosis Actínica</h4>
+                    <p>Lesión precancerosa causada por daño solar. Puede evolucionar a carcinoma escamoso.</p>
+                    <a href="{% url 'skin_detector:disease_info' 'akiec' %}" class="btn-disease-detail">
+                        Ver Detalles
+                    </a>
+                </div>
+            </div>
+
+            <!-- Queratosis Seborreica (BKL) -->
+            <div class="col-md-6 col-lg-4">
+                <div class="disease-card">
+                    <div class="disease-icon" style="color: #8e44ad;">�</div>
+                    <h4>Queratosis Seborreica</h4>
+                    <p>Crecimiento benigno común con la edad. No canceroso, aspecto "pegado" a la piel.</p>
+                    <a href="{% url 'skin_detector:disease_info' 'bkl' %}" class="btn-disease-detail">
+                        Ver Detalles
+                    </a>
+                </div>
+            </div>
+
+            <!-- Nevo Melanocítico (NV) -->
+            <div class="col-md-6 col-lg-4">
+                <div class="disease-card">
+                    <div class="disease-icon" style="color: #27ae60;">⭕</div>
+                    <h4>Nevo Melanocítico</h4>
+                    <p>Lunar común benigno. La mayoría son inofensivos pero requieren monitoreo regular.</p>
+                    <a href="{% url 'skin_detector:disease_info' 'nv' %}" class="btn-disease-detail">
+                        Ver Detalles
+                    </a>
+                </div>
+            </div>
+
+            <!-- Lesiones Vasculares (VASC) -->
+            <div class="col-md-6 col-lg-4">
+                <div class="disease-card">
+                    <div class="disease-icon" style="color: #c0392b;">❤️</div>
+                    <h4>Lesiones Vasculares</h4>
+                    <p>Proliferaciones benignas de vasos sanguíneos. Incluyen angiomas y hemangiomas.</p>
+                    <a href="{% url 'skin_detector:disease_info' 'vasc' %}" class="btn-disease-detail">
+                        Ver Detalles
+                    </a>
+                </div>
+            </div>
+
+            <!-- Dermatofibroma (DF) -->
+            <div class="col-md-6 col-lg-4">
+                <div class="disease-card">
+                    <div class="disease-icon" style="color: #95a5a6;">�</div>
+                    <h4>Dermatofibroma</h4>
+                    <p>Nódulo fibroso benigno común. Presenta el "signo del hoyuelo" característico.</p>
+                    <a href="{% url 'skin_detector:disease_info' 'df' %}" class="btn-disease-detail">
+                        Ver Detalles
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How it Works -->
+<section class="how-it-works-section" id="about">
+    <div class="container">
+        <div class="section-title">
+            <h2>¿Cómo funciona?</h2>
+            <p>Proceso simple y eficiente para obtener tu diagnóstico</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <div class="step-icon">
+                        <i class="fas fa-upload"></i>
+                    </div>
+                    <h4>Sube tu imagen</h4>
+                    <p>Toma una foto clara de la zona afectada de la piel o usa una imagen existente.</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <div class="step-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h4>Análisis IA</h4>
+                    <p>Nuestro modelo de inteligencia artificial analiza la imagen con precisión del 92%.</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <div class="step-icon">
+                        <i class="fas fa-file-medical"></i>
+                    </div>
+                    <h4>Obtén Resultados</h4>
+                    <p>Recibe un diagnóstico detallado con recomendaciones e información médica.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-5">
+            <a href="{% url 'skin_detector:diagnostico' %}" class="btn btn-hero-primary">
+                <i class="fas fa-rocket me-2"></i>
+                Comenzar Diagnóstico
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Recent Diagnostics -->
+{% if recent_predictions %}
+<section class="recent-section">
+    <div class="container">
+        <div class="section-title">
+            <h2>
+                <i class="fas fa-clock-rotate-left me-3"></i>
+                Diagnósticos Recientes
+            </h2>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                {% for prediction in recent_predictions %}
+                <div class="recent-card">
+                    <div>
+                        <div class="recent-disease-name">{{ prediction.get_predicted_disease_name }}</div>
+                        <div class="recent-date">
+                            <i class="far fa-calendar me-1"></i>
+                            {{ prediction.uploaded_at|date:"d/m/Y H:i" }}
+                        </div>
+                    </div>
+                    <div class="ms-auto">
+                        <span class="recent-badge 
+                            {% if prediction.predicted_class == 'mel' or prediction.predicted_class == 'bcc' %}bg-danger
+                            {% elif prediction.predicted_class == 'akiec' %}bg-warning
+                            {% else %}bg-success{% endif %} text-white">
+                            {{ prediction.get_confidence_percentage }}%
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- CTA Section -->
+<section class="cta-section">
+    <div class="container">
+        <h2>¿Listo para comenzar?</h2>
+        <p>Obtén tu diagnóstico dermatológico en segundos</p>
+        <a href="{% url 'skin_detector:diagnostico' %}" class="btn btn-hero-primary">
+            <i class="fas fa-arrow-right me-2"></i>
+            Realizar Diagnóstico Ahora
+        </a>
+    </div>
+</section>
+
+<!-- Disclaimer -->
+<section class="disclaimer-section">
+    <div class="container">
+        <div class="disclaimer-content">
+            <div class="disclaimer-icon">
+                <i class="fas fa-triangle-exclamation"></i>
+            </div>
+            <div class="disclaimer-text">
+                <strong>Importante: Descargo de Responsabilidad Médica</strong><br>
+                Este sistema es una herramienta de apoyo y no reemplaza la consulta médica profesional. 
+                Siempre consulte con un dermatólogo para obtener un diagnóstico definitivo y plan de tratamiento personalizado.
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="container">
+        <p>
+            <i class="fas fa-heartbeat me-2"></i>
+            <strong>DermatologIA</strong> - Sistema inteligente de diagnóstico dermatológico utilizando IA
+        </p>
+        <div class="footer-links">
+            <a href="#" class="footer-link">
+                <i class="fas fa-circle-info me-1"></i>
+                Sistema médico de apoyo - No reemplaza consulta profesional
+            </a>
+        </div>
+        <p class="mt-2">
+            Siempre consulte con un dermatólogo para diagnósticos definitivos
+        </p>
+    </div>
+</footer>
+{% endblock main_wrapper %}

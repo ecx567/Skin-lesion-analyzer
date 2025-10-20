@@ -86,173 +86,186 @@
     
     <!-- Información y Predicciones Recientes -->
     <div class="col-lg-4">
-        <!-- Información del Sistema -->
-        <!-- Panel de Información del Sistema Mejorado -->
-        <div class="card mb-4 shadow-sm border-0">
-            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <h5 class="mb-0">
+        <!-- Información del Sistema Mejorada -->
+        <div class="card mb-4 info-panel">
+            <div class="card-header bg-gradient-primary">
+                <h5 class="mb-0 text-white">
                     <i class="fas fa-brain me-2"></i>
-                    Sistema de Detección IA
+                    SkinAI Detector
                 </h5>
-                <small class="opacity-75">Análisis automatizado de lesiones cutáneas</small>
+                <small class="text-light opacity-75">Sistema de diagnóstico inteligente</small>
             </div>
             <div class="card-body">
-                <!-- Información de Precisión -->
-                <div class="alert alert-info border-0 shadow-sm mb-3">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-chart-line fa-2x me-3 text-info"></i>
-                        <div>
-                            <strong>Precisión del Sistema: 92%</strong>
-                            <p class="mb-0 small">Entrenado con más de 10,000 imágenes dermatológicas certificadas</p>
-                        </div>
+                <div class="info-item">
+                    <i class="fas fa-microscope text-primary"></i>
+                    <div>
+                        <strong>Tecnología IA Avanzada</strong>
+                        <p class="mb-0 text-muted small">Red neuronal convolucional entrenada con +10,000 imágenes</p>
                     </div>
                 </div>
+                
+                <div class="info-item">
+                    <i class="fas fa-clock text-success"></i>
+                    <div>
+                        <strong>Análisis en Tiempo Real</strong>
+                        <p class="mb-0 text-muted small">Resultados en menos de 5 segundos</p>
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <i class="fas fa-shield-alt text-info"></i>
+                    <div>
+                        <strong>Precisión del 92%</strong>
+                        <p class="mb-0 text-muted small">Validado con datos clínicos certificados</p>
+                    </div>
+                </div>
+                
+                <hr class="my-3">
                 
                 <h6 class="text-primary mb-3">
-                    <i class="fas fa-microscope me-2"></i>
-                    Enfermedades Detectables (7 Tipos):
+                    <i class="fas fa-eye me-2"></i>
+                    Enfermedades Detectables
                 </h6>
-                <div class="row g-2 mb-3">
-                    <div class="col-12">
-                        <div class="d-flex align-items-center p-2 rounded" style="background-color: #fff5f5;">
-                            <span class="badge bg-danger me-2" style="min-width: 50px;">MEL</span>
-                            <div class="flex-grow-1">
-                                <strong>Melanoma</strong>
-                                <span class="badge bg-danger ms-2">MUY ALTA PRIORIDAD</span>
-                            </div>
-                        </div>
+                
+                <div class="disease-list">
+                    <div class="disease-item mb-2">
+                        <span class="disease-badge disease-mel">MEL</span>
+                        <span class="ms-2">Melanoma</span>
+                        <span class="severity-indicator severity-muy-alta ms-auto">Muy Alta</span>
                     </div>
-                    <div class="col-12">
-                        <div class="d-flex align-items-center p-2 rounded" style="background-color: #fff8f0;">
-                            <span class="badge bg-warning text-dark me-2" style="min-width: 50px;">BCC</span>
-                            <div class="flex-grow-1">
-                                <strong>Carcinoma Basocelular</strong>
-                                <span class="badge bg-warning text-dark ms-2">ALTA PRIORIDAD</span>
-                            </div>
-                        </div>
+                    <div class="disease-item mb-2">
+                        <span class="disease-badge disease-bcc">BCC</span>
+                        <span class="ms-2">Carcinoma Basocelular</span>
+                        <span class="severity-indicator severity-alta ms-auto">Alta</span>
                     </div>
-                    <div class="col-12">
-                        <div class="d-flex align-items-center p-2 rounded" style="background-color: #fffbf0;">
-                            <span class="badge bg-warning text-dark me-2" style="min-width: 50px;">AKIEC</span>
-                            <div class="flex-grow-1">
-                                <strong>Queratosis Actínicas</strong>
-                                <span class="badge bg-secondary ms-2">MEDIA</span>
-                            </div>
-                        </div>
+                    <div class="disease-item mb-2">
+                        <span class="disease-badge disease-akiec">AKIEC</span>
+                        <span class="ms-2">Queratosis Actínicas</span>
+                        <span class="severity-indicator severity-moderada ms-auto">Moderada</span>
                     </div>
-                    <div class="col-12">
-                        <div class="d-flex align-items-center p-2 rounded" style="background-color: #f0f8ff;">
-                            <span class="badge bg-info me-2" style="min-width: 50px;">VASC</span>
-                            <div class="flex-grow-1">
-                                <strong>Lesiones Vasculares</strong>
-                                <span class="badge bg-secondary ms-2">MEDIA</span>
-                            </div>
-                        </div>
+                    <div class="disease-item mb-2">
+                        <span class="disease-badge disease-vasc">VASC</span>
+                        <span class="ms-2">Lesiones Vasculares</span>
+                        <span class="severity-indicator severity-moderada ms-auto">Moderada</span>
                     </div>
-                    <div class="col-12">
-                        <div class="d-flex align-items-center p-2 rounded" style="background-color: #f0fff0;">
-                            <span class="badge bg-success me-2" style="min-width: 50px;">BKL</span>
-                            <div class="flex-grow-1">
-                                <strong>Queratosis Benigna</strong>
-                                <span class="badge bg-success ms-2">BAJA</span>
-                            </div>
-                        </div>
+                    <div class="disease-item mb-2">
+                        <span class="disease-badge disease-bkl">BKL</span>
+                        <span class="ms-2">Queratosis Benigna</span>
+                        <span class="severity-indicator severity-baja ms-auto">Baja</span>
                     </div>
-                    <div class="col-12">
-                        <div class="d-flex align-items-center p-2 rounded" style="background-color: #f0fff0;">
-                            <span class="badge bg-success me-2" style="min-width: 50px;">DF</span>
-                            <div class="flex-grow-1">
-                                <strong>Dermatofibroma</strong>
-                                <span class="badge bg-success ms-2">BAJA</span>
-                            </div>
-                        </div>
+                    <div class="disease-item mb-2">
+                        <span class="disease-badge disease-df">DF</span>
+                        <span class="ms-2">Dermatofibroma</span>
+                        <span class="severity-indicator severity-baja ms-auto">Baja</span>
                     </div>
-                    <div class="col-12">
-                        <div class="d-flex align-items-center p-2 rounded" style="background-color: #f0fff0;">
-                            <span class="badge bg-success me-2" style="min-width: 50px;">NV</span>
-                            <div class="flex-grow-1">
-                                <strong>Nevos Melanocíticos</strong>
-                                <span class="badge bg-success ms-2">BAJA</span>
-                            </div>
-                        </div>
+                    <div class="disease-item">
+                        <span class="disease-badge disease-nv">NV</span>
+                        <span class="ms-2">Nevos Melanocíticos</span>
+                        <span class="severity-indicator severity-baja ms-auto">Baja</span>
                     </div>
                 </div>
                 
-                <hr>
+                <hr class="my-3">
                 
-                <div class="row text-center">
-                    <div class="col-6">
-                        <i class="fas fa-file-image fa-2x text-primary mb-2"></i>
-                        <h6 class="small mb-1">Formatos</h6>
-                        <p class="small text-muted mb-0">JPG, PNG</p>
-                    </div>
-                    <div class="col-6">
-                        <i class="fas fa-clock fa-2x text-success mb-2"></i>
-                        <h6 class="small mb-1">Tiempo</h6>
-                        <p class="small text-muted mb-0">2-5 seg</p>
+                <div class="info-item">
+                    <i class="fas fa-file-image text-warning"></i>
+                    <div>
+                        <strong>Formatos Soportados</strong>
+                        <p class="mb-0 text-muted small">JPG, JPEG, PNG (máx. 10MB)</p>
                     </div>
                 </div>
                 
-                <div class="alert alert-warning border-0 mt-3 mb-0">
-                    <small>
-                        <i class="fas fa-exclamation-triangle me-1"></i>
-                        <strong>Importante:</strong> Esta herramienta es de apoyo diagnóstico. 
-                        Siempre consulte con un dermatólogo profesional.
-                    </small>
+                <div class="info-item">
+                    <i class="fas fa-user-shield text-danger"></i>
+                    <div>
+                        <strong>Aviso Médico</strong>
+                        <p class="mb-0 text-muted small">Este sistema es una herramienta de apoyo. Consulte siempre con un profesional médico.</p>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <!-- Predicciones Recientes Mejoradas -->
+        <!-- Análisis Recientes Mejorados -->
         {% if recent_predictions %}
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
-                <h5 class="mb-0">
+        <div class="card recent-analysis">
+            <div class="card-header bg-gradient-info">
+                <h5 class="mb-0 text-white">
                     <i class="fas fa-history me-2"></i>
                     Análisis Recientes
                 </h5>
-                <small class="opacity-75">Últimas predicciones procesadas</small>
+                <small class="text-light opacity-75">Últimas {{ recent_predictions|length }} predicciones</small>
             </div>
-            <div class="card-body p-2">
+            <div class="card-body">
                 {% for prediction in recent_predictions %}
-                <div class="prediction-card border rounded p-2 mb-2 hover-shadow" style="transition: all 0.3s;">
-                    <div class="row align-items-center g-2">
-                        <div class="col-3">
-                            <img src="{{ prediction.image.url }}" alt="Imagen" 
-                                 class="img-fluid rounded shadow-sm" 
-                                 style="height: 70px; width: 100%; object-fit: cover;">
+                <div class="analysis-item fade-in-up" style="animation-delay: 0.{{ forloop.counter0 }}s">
+                    <div class="analysis-image">
+                        {% if prediction.image %}
+                        <img src="{{ prediction.image.url }}" alt="Análisis #{{ prediction.id }}" 
+                             class="analysis-image">
+                        {% else %}
+                        <div class="analysis-image bg-light d-flex align-items-center justify-content-center">
+                            <i class="fas fa-image text-muted"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="analysis-details">
+                        <div class="analysis-title">
+                            {{ prediction.get_predicted_disease_name|default:"Análisis en proceso" }}
+                            {% if prediction.predicted_class %}
+                            <span class="badge 
+                                {% if prediction.predicted_class in 'mel,bcc' %}badge-danger
+                                {% elif prediction.predicted_class in 'akiec,vasc' %}badge-warning
+                                {% else %}badge-success{% endif %} ms-2">
+                                {{ prediction.predicted_class|upper }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        
+                        {% if prediction.confidence %}
+                        <div class="analysis-confidence">
+                            Confianza: {{ prediction.get_confidence_percentage }}%
+                        </div>
+                        {% endif %}
+                        
+                        <div class="analysis-date">
+                            {{ prediction.uploaded_at|timesince }} atrás
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-actions">
+                        <a href="{% url 'skin_detector:prediction_detail' prediction.id %}" 
+                           class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </div>
+                </div>
                         </div>
                         <div class="col-9">
-                            <div class="d-flex justify-content-between align-items-start mb-1">
-                                <h6 class="mb-0 fw-bold">{{ prediction.get_predicted_disease_name }}</h6>
-                                <span class="badge 
-                                    {% if prediction.predicted_class == 'mel' %}bg-danger
-                                    {% elif prediction.predicted_class == 'bcc' %}bg-warning text-dark
-                                    {% elif prediction.predicted_class in 'akiec,vasc' %}bg-secondary
-                                    {% else %}bg-success{% endif %}">
-                                    {{ prediction.predicted_class|upper }}
-                                </span>
-                            </div>
-                            <div class="small text-muted mb-2">
-                                <i class="fas fa-bullseye me-1 text-success"></i>
-                                <strong>{{ prediction.get_confidence_percentage }}%</strong> confianza
-                                <span class="mx-1">•</span>
-                                <i class="fas fa-clock me-1 text-info"></i>
+                            <h6 class="mb-1">{{ prediction.get_predicted_disease_name }}</h6>
+                            <small class="text-muted">
+                                <i class="fas fa-percentage me-1"></i>
+                                {{ prediction.get_confidence_percentage }}% confianza
+                            </small><br>
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>
                                 {{ prediction.processed_at|timesince }} atrás
+                            </small>
+                            <div class="mt-2">
+                                <a href="{% url 'skin_detector:prediction_detail' prediction.pk %}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye me-1"></i>Ver Detalles
+                                </a>
                             </div>
-                            <a href="{% url 'skin_detector:prediction_detail' prediction.pk %}" 
-                               class="btn btn-sm btn-outline-primary w-100">
-                                <i class="fas fa-eye me-1"></i>Ver Detalles Completos
-                            </a>
                         </div>
                     </div>
                 </div>
                 {% endfor %}
                 
-                <div class="text-center mt-3">
-                    <a href="{% url 'skin_detector:history' %}" class="btn btn-success btn-sm">
+                <div class="text-center">
+                    <a href="{% url 'skin_detector:history' %}" class="btn btn-outline-secondary btn-sm">
                         <i class="fas fa-history me-1"></i>
-                        Ver Todo el Historial ({{ recent_predictions|length }}+ análisis)
+                        Ver Todo el Historial
                     </a>
                 </div>
             </div>
