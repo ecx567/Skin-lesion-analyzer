@@ -4,6 +4,11 @@ from . import views
 app_name = 'skin_detector'
 
 urlpatterns = [
+    # Autenticación
+    path('register/', views.register_view, name='register'),
+    path('login/', views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
+    
     # Páginas web
     path('', views.landing, name='landing'),  # Nueva página de presentación
     path('diagnostico/', views.diagnostico, name='diagnostico'),  # Página de diagnóstico (antiguo home)

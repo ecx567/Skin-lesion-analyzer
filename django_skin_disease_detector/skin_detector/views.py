@@ -1,6 +1,19 @@
+"""
+Vistas del sistema de detección de enfermedades cutáneas.
+
+Este módulo contiene todas las vistas (Views) de la aplicación siguiendo el patrón MTV.
+Incluye vistas web para usuarios y endpoints API REST.
+
+Autor: Equipo de Desarrollo DermatologIA
+Fecha: Octubre 2025
+Versión: 1.0.0
+"""
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib import messages
+from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -12,23 +25,164 @@ import json
 import os
 import time
 from .models import SkinImagePrediction
-from .forms import SkinImageUploadForm, QuickPredictionForm
+from .forms import SkinImageUploadForm, QuickPredictionForm, UserRegistrationForm, UserLoginForm
 from .predictor import get_predictor
 import logging
 
+# Configurar logger para esta aplicación
 logger = logging.getLogger(__name__)
 
 
+# ==================== VISTAS DE AUTENTICACIÓN ====================
+
+def register_view(request):
+    """
+    Vista de registro de nuevos usuarios.
+    
+    Maneja el registro de usuarios nuevos con validación de datos
+    y creación automática de cuenta.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP.
+        
+    Returns:
+        HttpResponse: Renderiza formulario de registro o redirige al login.
+        
+    Template:
+        skin_detector/register.html
+        
+    Context:
+        form (UserRegistrationForm): Formulario de registro.
+        title (str): Título de la página.
+    """
+    if request.user.is_authenticated:
+        messages.info(request, 'Ya has iniciado sesión.')
+        return redirect('skin_detector:diagnostico')
+    
+    if request.method == 'POST':
+        form = UserRegistrationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            username = form.cleaned_data.get('username')
+            messages.success(
+                request, 
+                f'¡Cuenta creada exitosamente para {username}! Ahora puedes iniciar sesión.'
+            )
+            logger.info(f'Nuevo usuario registrado: {username}')
+            return redirect('skin_detector:login')
+        else:
+            messages.error(request, 'Por favor corrige los errores en el formulario.')
+    else:
+        form = UserRegistrationForm()
+    
+    context = {
+        'form': form,
+        'title': 'Registro de Usuario - DermatologIA'
+    }
+    return render(request, 'skin_detector/register.html', context)
+
+
+def login_view(request):
+    """
+    Vista de inicio de sesión.
+    
+    Autentica usuarios existentes y redirige a la página de diagnóstico.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP.
+        
+    Returns:
+        HttpResponse: Renderiza formulario de login o redirige al diagnóstico.
+        
+    Template:
+        skin_detector/login.html
+        
+    Context:
+        form (UserLoginForm): Formulario de inicio de sesión.
+        title (str): Título de la página.
+    """
+    if request.user.is_authenticated:
+        messages.info(request, 'Ya has iniciado sesión.')
+        return redirect('skin_detector:diagnostico')
+    
+    if request.method == 'POST':
+        form = UserLoginForm(request, data=request.POST)
+        if form.is_valid():
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
+            user = authenticate(username=username, password=password)
+            
+            if user is not None:
+                login(request, user)
+                messages.success(request, f'¡Bienvenido de nuevo, {username}!')
+                logger.info(f'Usuario autenticado: {username}')
+                
+                # Redirigir a la página solicitada o al diagnóstico
+                next_page = request.GET.get('next', 'skin_detector:diagnostico')
+                return redirect(next_page)
+            else:
+                messages.error(request, 'Usuario o contraseña incorrectos.')
+        else:
+            messages.error(request, 'Usuario o contraseña incorrectos.')
+    else:
+        form = UserLoginForm()
+    
+    context = {
+        'form': form,
+        'title': 'Iniciar Sesión - DermatologIA'
+    }
+    return render(request, 'skin_detector/login.html', context)
+
+
+@login_required
+def logout_view(request):
+    """
+    Vista de cierre de sesión.
+    
+    Cierra la sesión del usuario actual y redirige a la landing page.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP.
+        
+    Returns:
+        HttpResponseRedirect: Redirige a la página de inicio.
+    """
+    username = request.user.username
+    logout(request)
+    messages.info(request, f'Has cerrado sesión correctamente. ¡Hasta pronto, {username}!')
+    logger.info(f'Usuario cerró sesión: {username}')
+    return redirect('skin_detector:landing')
+
+
+# ==================== VISTAS WEB ====================
+
 def landing(request):
     """
-    Página de presentación/landing principal
+    Vista de página de presentación/landing principal.
+    
+    Muestra la página de inicio del sistema con estadísticas generales,
+    información de las enfermedades detectables y acceso rápido al diagnóstico.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP de Django.
+    
+    Returns:
+        HttpResponse: Renderiza la plantilla landing.html con contexto de datos.
+        
+    Template:
+        skin_detector/landing.html
+        
+    Context:
+        total_predictions (int): Número total de predicciones realizadas.
+        recent_predictions (QuerySet): Últimas 3 predicciones exitosas.
+        title (str): Título de la página.
     """
-    # Contar total de predicciones
+    # Contar total de predicciones exitosas
     total_predictions = SkinImagePrediction.objects.filter(
         predicted_class__isnull=False
     ).count()
     
-    # Obtener últimas 3 predicciones para mostrar
+    # Obtener últimas 3 predicciones para mostrar en la sección de diagnósticos recientes
     recent_predictions = SkinImagePrediction.objects.filter(
         predicted_class__isnull=False
     ).order_by('-processed_at')[:3]
@@ -44,7 +198,29 @@ def landing(request):
 
 def diagnostico(request):
     """
-    Página de diagnóstico con formulario de subida (antiguo home)
+    Vista de página de diagnóstico con formulario de subida de imágenes.
+    
+    Maneja tanto GET (mostrar formulario) como POST (procesar imagen y realizar predicción).
+    Utiliza el modelo de IA para clasificar la lesión cutánea subida por el usuario.
+    
+    Args:
+        request (HttpRequest): Objeto de solicitud HTTP de Django.
+    
+    Returns:
+        HttpResponse: 
+            - GET: Renderiza formulario de subida de imagen.
+            - POST: Redirige a página de detalles de predicción o muestra errores.
+    
+    Template:
+        skin_detector/home.html
+        
+    Context:
+        form (SkinImageUploadForm): Formulario de subida de imagen.
+        recent_predictions (QuerySet): Últimas 5 predicciones para mostrar.
+        title (str): Título de la página.
+        
+    Raises:
+        Exception: Captura y registra cualquier error durante la predicción.
     """
     if request.method == 'POST':
         form = SkinImageUploadForm(request.POST, request.FILES)
