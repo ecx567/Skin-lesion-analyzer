@@ -18,3 +18,7 @@ python-dotenv==1.0.0
 
 # Utilities
 requests==2.31.0
+
+# PDF generation
+xhtml2pdf==0.2.8
+reportlab==3.6.12

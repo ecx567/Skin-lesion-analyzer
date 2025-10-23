@@ -14,8 +14,10 @@ urlpatterns = [
     path('diagnostico/', views.diagnostico, name='diagnostico'),  # Página de diagnóstico (antiguo home)
     path('disease-info/<str:disease_code>/', views.disease_info, name='disease_info'),  # Info de enfermedades
     path('prediction/<int:pk>/', views.prediction_detail, name='prediction_detail'),
+    path('prediction/<int:pk>/pdf/', views.prediction_pdf, name='prediction_pdf'),
     path('history/', views.prediction_history, name='history'),
     path('quick-predict/', views.quick_predict, name='quick_predict'),
+    path('save-and-predict/', views.save_and_predict, name='save_and_predict'),
     path('delete/<int:pk>/', views.delete_prediction, name='delete_prediction'),
     
     # API endpoints

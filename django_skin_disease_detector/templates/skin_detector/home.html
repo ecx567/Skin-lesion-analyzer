@@ -26,9 +26,17 @@
                         {{ form.image }}
                     </div>
                     
-                    <!-- Vista Previa -->
+                    <!-- Vista Previa (con recorte) -->
                     <div class="text-center mb-4" id="previewContainer" style="display: none;">
-                        <img id="imagePreview" class="image-preview" alt="Vista previa" />
+                        <div id="previewWrapper" style="position:relative; display:inline-block;">
+                            <img id="imagePreview" class="image-preview" alt="Vista previa" style="display:block; max-width:100%;" />
+                            <div id="previewCropOverlay" class="crop-overlay" style="display:none;"></div>
+                        </div>
+                        <div class="mt-2 crop-controls" style="display:none;" id="previewCropControls">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="startPreviewCropBtn">Iniciar recorte</button>
+                            <button type="button" class="btn btn-sm btn-primary" id="applyPreviewCropBtn" style="display:none;">Aplicar recorte</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="cancelPreviewCropBtn" style="display:none;">Cancelar</button>
+                        </div>
                     </div>
                     
                     <!-- Botones -->
@@ -40,6 +48,10 @@
                         <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
                             <i class="fas fa-undo me-2"></i>
                             Limpiar
+                        </button>
+                        <button type="button" class="btn btn-outline-info ms-2" onclick="openCameraModal()">
+                            <i class="fas fa-camera me-2"></i>
+                            Usar Cámara
                         </button>
                     </div>
                     
@@ -288,6 +300,43 @@
         </div>
     </div>
 </div>
+
+    <!-- Modal Cámara -->
+    <div class="modal fade" id="cameraModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Tomar Foto desde la Cámara</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <video id="cameraStream" autoplay playsinline style="max-width:100%;"></video>
+                    <canvas id="cameraCanvas" style="display:none;"></canvas>
+                    <div class="mt-3">
+                        <button class="btn btn-primary me-2" onclick="capturePhoto()"><i class="fas fa-camera"></i> Capturar</button>
+                        <button class="btn btn-secondary" onclick="stopCamera()">Cerrar Cámara</button>
+                    </div>
+                    <div class="mt-3" id="cameraPreviewContainer" style="display:none;">
+                        <h6>Vista previa</h6>
+                        <div id="cameraPreviewWrapper" style="position:relative; display:inline-block;">
+                            <img id="cameraPreview" style="max-width:100%; display:block;" />
+                            <div id="cameraCropOverlay" class="crop-overlay" style="display:none;"></div>
+                        </div>
+                        <div class="mt-2 crop-controls" style="display:none;" id="cameraCropControls">
+                            <button class="btn btn-sm btn-outline-primary" id="startCameraCropBtn">Iniciar recorte</button>
+                            <button class="btn btn-sm btn-primary" id="applyCameraCropBtn" style="display:none;">Aplicar recorte</button>
+                            <button class="btn btn-sm btn-outline-secondary" id="cancelCameraCropBtn" style="display:none;">Cancelar</button>
+                        </div>
+                        <div class="mt-2 d-flex gap-2 justify-content-center">
+                            <button class="btn btn-success" onclick="useCapturedPhoto()">Usar esta foto</button>
+                            <button class="btn btn-primary" onclick="analyzeAndSaveCapturedPhoto()">Analizar ahora</button>
+                            <button class="btn btn-outline-secondary" onclick="retakePhoto()">Volver a capturar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block extra_js %}
@@ -362,6 +411,14 @@ function resetForm() {
     $('#quickForm')[0].reset();
 }
 
+// Helper to read a cookie value by name (used to get CSRF token)
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
 function displayQuickResult(result) {
     var severityClass = getSeverityClass(result.disease_info.severity);
     
@@ -406,5 +463,280 @@ function getSeverityClass(severity) {
         default: return 'severity-baja';
     }
 }
+
+// ================= Camera capture functions =================
+let cameraStreamTrack = null;
+
+function openCameraModal() {
+    $('#cameraModal').modal('show');
+    startCamera();
+}
+
+async function startCamera() {
+    const video = document.getElementById('cameraStream');
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+        video.srcObject = stream;
+        cameraStreamTrack = stream.getTracks()[0];
+    } catch (err) {
+        alert('No se pudo acceder a la cámara: ' + err.message);
+        console.error(err);
+        $('#cameraModal').modal('hide');
+    }
+}
+
+function stopCamera() {
+    const video = document.getElementById('cameraStream');
+    if (video && video.srcObject) {
+        const tracks = video.srcObject.getTracks();
+        tracks.forEach(t => t.stop());
+        video.srcObject = null;
+    }
+    cameraStreamTrack = null;
+    $('#cameraModal').modal('hide');
+}
+
+function capturePhoto() {
+    const video = document.getElementById('cameraStream');
+    const canvas = document.getElementById('cameraCanvas');
+    const previewContainer = document.getElementById('cameraPreviewContainer');
+    const previewImg = document.getElementById('cameraPreview');
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+    previewImg.src = dataUrl;
+    previewContainer.style.display = 'block';
+    // Pause the stream for preview clarity
+    if (video.srcObject) {
+        video.srcObject.getTracks().forEach(t => t.enabled = false);
+    }
+}
+
+function retakePhoto() {
+    const previewContainer = document.getElementById('cameraPreviewContainer');
+    const video = document.getElementById('cameraStream');
+    previewContainer.style.display = 'none';
+    if (video.srcObject) {
+        video.srcObject.getTracks().forEach(t => t.enabled = true);
+    }
+}
+
+function useCapturedPhoto() {
+    const canvas = document.getElementById('cameraCanvas');
+    canvas.toBlob(function(blob) {
+        // Crear un File a partir del Blob para ponerlo en el input file
+        const file = new File([blob], 'camera_capture.jpg', { type: 'image/jpeg' });
+
+        // Crear un DataTransfer para asignar al input
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        const input = document.getElementById('id_image');
+        input.files = dataTransfer.files;
+
+        // Mostrar vista previa en el formulario
+        previewImage(input, '#imagePreview');
+        $('#previewContainer').show();
+
+        // Cerrar cámara y modal
+        stopCamera();
+    }, 'image/jpeg', 0.95);
+}
+
+async function analyzeAndSaveCapturedPhoto() {
+    const canvas = document.getElementById('cameraCanvas');
+    if (!canvas || !canvas.width) {
+        alert('No hay foto capturada para analizar.');
+        return;
+    }
+
+    canvas.toBlob(async function(blob) {
+        const formData = new FormData();
+        formData.append('image', blob, 'capture.jpg');
+
+        try {
+            const csrftoken = getCookie('csrftoken');
+            const resp = await fetch('{% url "skin_detector:save_and_predict" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken
+                },
+                body: formData,
+                credentials: 'same-origin'
+            });
+
+            const data = await resp.json();
+            if (data && data.redirect_url) {
+                // Redirect to the saved prediction detail page
+                window.location = data.redirect_url;
+            } else if (data && data.success === false) {
+                alert('Error al guardar y analizar: ' + (data.error || 'Desconocido'));
+            } else {
+                alert('Respuesta inesperada del servidor.');
+                console.error('Respuesta inesperada:', data);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error enviando imagen al servidor: ' + err);
+        }
+    }, 'image/jpeg', 0.95);
+}
+
+// ============== Simple image cropping widget ==============
+let cropState = null; // {startX,startY,x,y,active,element,wrapper}
+
+function enableCropForPreview(wrapperId, imgId, overlayId, startBtnId, applyBtnId, cancelBtnId, applyCallback) {
+    const wrapper = document.getElementById(wrapperId);
+    const img = document.getElementById(imgId);
+    const overlay = document.getElementById(overlayId);
+    const startBtn = document.getElementById(startBtnId);
+    const applyBtn = document.getElementById(applyBtnId);
+    const cancelBtn = document.getElementById(cancelBtnId);
+
+    let rect = null;
+
+    function onPointerDown(e) {
+        e.preventDefault();
+        const bounds = img.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const startX = clientX - bounds.left;
+        const startY = clientY - bounds.top;
+        rect = {startX, startY, x: startX, y: startY};
+        overlay.style.display = 'block';
+        overlay.style.left = startX + 'px';
+        overlay.style.top = startY + 'px';
+        overlay.style.width = '0px';
+        overlay.style.height = '0px';
+        document.addEventListener('mousemove', onPointerMove);
+        document.addEventListener('mouseup', onPointerUp);
+        document.addEventListener('touchmove', onPointerMove);
+        document.addEventListener('touchend', onPointerUp);
+    }
+
+    function onPointerMove(e) {
+        if (!rect) return;
+        const bounds = img.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const currentX = Math.max(0, Math.min(bounds.width, clientX - bounds.left));
+        const currentY = Math.max(0, Math.min(bounds.height, clientY - bounds.top));
+        const left = Math.min(rect.startX, currentX);
+        const top = Math.min(rect.startY, currentY);
+        const width = Math.abs(currentX - rect.startX);
+        const height = Math.abs(currentY - rect.startY);
+        overlay.style.left = left + 'px';
+        overlay.style.top = top + 'px';
+        overlay.style.width = width + 'px';
+        overlay.style.height = height + 'px';
+        rect.x = left; rect.y = top; rect.w = width; rect.h = height;
+    }
+
+    function onPointerUp(e) {
+        document.removeEventListener('mousemove', onPointerMove);
+        document.removeEventListener('mouseup', onPointerUp);
+        document.removeEventListener('touchmove', onPointerMove);
+        document.removeEventListener('touchend', onPointerUp);
+        if (rect && rect.w > 5 && rect.h > 5) {
+            applyBtn.style.display = 'inline-block';
+            cancelBtn.style.display = 'inline-block';
+            startBtn.style.display = 'none';
+            cropState = {rect, img, overlay, wrapper};
+        } else {
+            // No válido
+            overlay.style.display = 'none';
+            rect = null;
+        }
+    }
+
+    function applyCrop() {
+        if (!cropState) return;
+        const r = cropState.rect;
+        // Create canvas to crop original image at natural size
+        const naturalW = img.naturalWidth;
+        const naturalH = img.naturalHeight;
+        const displayW = img.clientWidth;
+        const displayH = img.clientHeight;
+        const scaleX = naturalW / displayW;
+        const scaleY = naturalH / displayH;
+        const sx = Math.round(r.x * scaleX);
+        const sy = Math.round(r.y * scaleY);
+        const sw = Math.round(r.w * scaleX);
+        const sh = Math.round(r.h * scaleY);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = sw;
+        canvas.height = sh;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+
+        canvas.toBlob(function(blob) {
+            const file = new File([blob], 'cropped.jpg', {type: 'image/jpeg'});
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            const input = document.getElementById('id_image');
+            input.files = dataTransfer.files;
+            // Update preview image to cropped
+            const preview = document.getElementById('imagePreview');
+            preview.src = URL.createObjectURL(file);
+            $('#previewContainer').show();
+            // Cleanup overlay and controls
+            cropState.overlay.style.display = 'none';
+            applyBtn.style.display = 'none';
+            cancelBtn.style.display = 'none';
+            startBtn.style.display = 'inline-block';
+            cropState = null;
+        }, 'image/jpeg', 0.95);
+    }
+
+    function cancelCrop() {
+        overlay.style.display = 'none';
+        applyBtn.style.display = 'none';
+        cancelBtn.style.display = 'none';
+        startBtn.style.display = 'inline-block';
+        cropState = null;
+    }
+
+    // Wire buttons
+    startBtn.addEventListener('click', function() {
+        if (!img.naturalWidth) {
+            alert('La imagen aún no ha cargado. Espera un momento y vuelve a intentar.');
+            return;
+        }
+        overlay.style.display = 'none';
+        overlay.style.left = '0px'; overlay.style.top='0px'; overlay.style.width='0px'; overlay.style.height='0px';
+        overlay.style.position = 'absolute';
+        overlay.style.border = '2px dashed #0d6efd';
+        overlay.style.background = 'rgba(13,110,253,0.1)';
+        overlay.style.pointerEvents = 'none';
+        img.style.touchAction = 'none';
+        overlay.style.display = 'none';
+        // Register pointer events
+        img.addEventListener('mousedown', onPointerDown);
+        img.addEventListener('touchstart', onPointerDown);
+        applyBtn.style.display = 'none';
+        cancelBtn.style.display = 'none';
+    });
+
+    applyBtn.addEventListener('click', applyCrop);
+    cancelBtn.addEventListener('click', cancelCrop);
+}
+
+// Inicializar crop para preview y camera preview cuando el DOM cambie
+document.addEventListener('DOMContentLoaded', function() {
+    // Controls prefixes map to element ids used earlier
+    // preview: startPreviewCropBtn -> controlsPrefix 'startPreviewCropBtn' etc.
+    // to keep it simple, we'll use direct element ids wired below
+    const startPreview = document.getElementById('startPreviewCropBtn');
+    if (startPreview) {
+        enableCropForPreview('previewWrapper', 'imagePreview', 'previewCropOverlay', 'startPreviewCropBtn', 'applyPreviewCropBtn', 'cancelPreviewCropBtn', null);
+    }
+    const startCamera = document.getElementById('startCameraCropBtn');
+    if (startCamera) {
+        enableCropForPreview('cameraPreviewWrapper', 'cameraPreview', 'cameraCropOverlay', 'startCameraCropBtn', 'applyCameraCropBtn', 'cancelCameraCropBtn', null);
+    }
+});
 </script>
 {% endblock %}

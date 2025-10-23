@@ -10,6 +10,7 @@ Versión: 1.0.0
 """
 
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.http import JsonResponse
 from django.contrib import messages
 from django.contrib.auth import login, logout, authenticate
@@ -28,6 +29,10 @@ from .models import SkinImagePrediction
 from .forms import SkinImageUploadForm, QuickPredictionForm, UserRegistrationForm, UserLoginForm
 from .predictor import get_predictor
 import logging
+from django.template.loader import render_to_string
+from django.http import HttpResponse
+from django.conf import settings
+from django.contrib.staticfiles import finders
 
 # Configurar logger para esta aplicación
 logger = logging.getLogger(__name__)
@@ -342,6 +347,81 @@ def prediction_history(request):
     return render(request, 'skin_detector/history.html', context)
 
 
+def prediction_pdf(request, pk):
+    """
+    Genera un PDF con el reporte de la predicción.
+    """
+    prediction = get_object_or_404(SkinImagePrediction, pk=pk)
+
+    # Preparar contexto similar a prediction_detail
+    top_predictions = None
+    try:
+        predictor = get_predictor()
+        if prediction.probabilities:
+            sorted_probs = sorted(
+                prediction.probabilities.items(),
+                key=lambda x: x[1]['probability'],
+                reverse=True
+            )[:3]
+            top_predictions = []
+            for i, (class_code, prob_info) in enumerate(sorted_probs):
+                disease_info = predictor.disease_info.get(class_code, {})
+                top_predictions.append({
+                    'rank': i + 1,
+                    'class_code': class_code,
+                    'percentage': prob_info['percentage'],
+                    'name': prob_info['name'],
+                    'spanish': prob_info['spanish'],
+                    'disease_info': disease_info
+                })
+    except Exception:
+        top_predictions = None
+
+    context = {
+        'prediction': prediction,
+        'top_predictions': top_predictions,
+        'title': f'Reporte Predicción #{prediction.pk}'
+    }
+
+    # Renderizar la plantilla a HTML
+    html = render_to_string('skin_detector/prediction_report.html', context)
+
+    # Importación perezosa de xhtml2pdf (pisa) para evitar que una importación fallida a nivel de módulo
+    # deje el nombre en None en procesos que ya estaban corriendo.
+    try:
+        from xhtml2pdf import pisa
+    except Exception:
+        return HttpResponse('La generación de PDF no está disponible. Instale xhtml2pdf.', status=500)
+
+    # Generar PDF
+    result = HttpResponse(content_type='application/pdf')
+    result['Content-Disposition'] = f'attachment; filename=prediction_{prediction.pk}.pdf'
+
+    # Función para que xhtml2pdf resuelva rutas de static y media
+    def link_callback(uri, rel):
+        # Media files
+        if uri.startswith(settings.MEDIA_URL):
+            path = os.path.join(settings.MEDIA_ROOT, uri.replace(settings.MEDIA_URL, ''))
+            return path
+
+        # Static files
+        if uri.startswith(settings.STATIC_URL):
+            static_path = uri.replace(settings.STATIC_URL, '')
+            result_path = finders.find(static_path)
+            if result_path:
+                return result_path
+
+        # Fallback a la URI
+        return uri
+
+    pisa_status = pisa.CreatePDF(src=html, dest=result, link_callback=link_callback)
+
+    if pisa_status.err:
+        return HttpResponse('Error generando PDF: ' + str(pisa_status.err), status=500)
+
+    return result
+
+
 @csrf_exempt
 def quick_predict(request):
     """
@@ -386,6 +466,47 @@ def quick_predict(request):
             }, status=400)
     
     return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+
+@require_http_methods(['POST'])
+def save_and_predict(request):
+    """Guarda la imagen enviada, ejecuta la predicción y devuelve URL del detalle."""
+    form = SkinImageUploadForm(request.POST, request.FILES)
+    if not form.is_valid():
+        return JsonResponse({'success': False, 'error': 'Formulario inválido', 'form_errors': form.errors}, status=400)
+
+    try:
+        prediction_obj = form.save()
+
+        # Realizar predicción
+        predictor = get_predictor()
+        result = predictor.predict(prediction_obj.image.path)
+
+        # Actualizar objeto con resultados
+        prediction_obj.predicted_class = result['predicted_class']
+        prediction_obj.confidence_score = result['confidence']
+        prediction_obj.probabilities = result['all_probabilities']
+        prediction_obj.processing_time = result.get('processing_time')
+        prediction_obj.processed_at = timezone.now()
+
+        # Obtener dimensiones de la imagen
+        from PIL import Image
+        with Image.open(prediction_obj.image.path) as img:
+            prediction_obj.image_size = f"{img.size[0]}x{img.size[1]}"
+
+        prediction_obj.save()
+
+        redirect_url = request.build_absolute_uri(reverse('skin_detector:prediction_detail', args=[prediction_obj.pk]))
+        return JsonResponse({'success': True, 'redirect_url': redirect_url})
+
+    except Exception as e:
+        logger.exception('Error saving and predicting image')
+        # Intentar limpiar archivo si fue creado
+        try:
+            prediction_obj.delete()
+        except Exception:
+            pass
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 # ==================== API REST ====================

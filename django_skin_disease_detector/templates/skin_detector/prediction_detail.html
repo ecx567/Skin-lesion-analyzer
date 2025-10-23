@@ -756,8 +756,9 @@ $(document).ready(function() {
 });
 
 function downloadResult() {
-    $('#reportModal').modal('show');
-    generateReport();
+    // Abrir la vista que genera el PDF en una nueva pestaña
+    var url = '{% url "skin_detector:prediction_pdf" prediction.id %}';
+    window.open(url, '_blank');
 }
 
 function generateReport() {
