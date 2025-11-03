@@ -31,6 +31,7 @@ from .predictor import get_predictor
 import logging
 from django.template.loader import render_to_string
 from django.http import HttpResponse
+from django.db.utils import OperationalError
 from django.conf import settings
 from django.contrib.staticfiles import finders
 
@@ -182,15 +183,27 @@ def landing(request):
         recent_predictions (QuerySet): Últimas 3 predicciones exitosas.
         title (str): Título de la página.
     """
-    # Contar total de predicciones exitosas
-    total_predictions = SkinImagePrediction.objects.filter(
-        predicted_class__isnull=False
-    ).count()
-    
-    # Obtener últimas 3 predicciones para mostrar en la sección de diagnósticos recientes
-    recent_predictions = SkinImagePrediction.objects.filter(
-        predicted_class__isnull=False
-    ).order_by('-processed_at')[:3]
+    # Si el usuario no está autenticado, no mostrar estadísticas ni historial (cada usuario tiene su propio historial)
+    if not request.user.is_authenticated:
+        total_predictions = 0
+        recent_predictions = []
+    else:
+        try:
+            # Contar total de predicciones del usuario autenticado
+            total_predictions = SkinImagePrediction.objects.filter(
+                predicted_class__isnull=False,
+                user=request.user
+            ).count()
+
+            # Obtener últimas 3 predicciones del usuario
+            recent_predictions = SkinImagePrediction.objects.filter(
+                predicted_class__isnull=False,
+                user=request.user
+            ).order_by('-processed_at')[:3]
+        except OperationalError:
+            # Esquema antiguo (sin columna user); usar comportamiento global para evitar 500
+            total_predictions = SkinImagePrediction.objects.filter(predicted_class__isnull=False).count()
+            recent_predictions = SkinImagePrediction.objects.filter(predicted_class__isnull=False).order_by('-processed_at')[:3]
     
     context = {
         'total_predictions': total_predictions,
@@ -201,6 +214,7 @@ def landing(request):
     return render(request, 'skin_detector/landing.html', context)
 
 
+@login_required
 def diagnostico(request):
     """
     Vista de página de diagnóstico con formulario de subida de imágenes.
@@ -230,43 +244,61 @@ def diagnostico(request):
     if request.method == 'POST':
         form = SkinImageUploadForm(request.POST, request.FILES)
         if form.is_valid():
-            # Guardar imagen
-            prediction_obj = form.save()
-            
+            # Guardar imagen (sin commit para poder asignar usuario si corresponde)
+            prediction_obj = form.save(commit=False)
+            if request.user.is_authenticated:
+                prediction_obj.user = request.user
+            # Guardar para tener el archivo disponible en disco
+            prediction_obj.save()
+
             try:
                 # Realizar predicción
                 predictor = get_predictor()
                 result = predictor.predict(prediction_obj.image.path)
-                
+
                 # Actualizar objeto con resultados
                 prediction_obj.predicted_class = result['predicted_class']
                 prediction_obj.confidence_score = result['confidence']
                 prediction_obj.probabilities = result['all_probabilities']
-                prediction_obj.processing_time = result['processing_time']
+                prediction_obj.processing_time = result.get('processing_time')
                 prediction_obj.processed_at = timezone.now()
-                
+
                 # Obtener dimensiones de la imagen
                 from PIL import Image
                 with Image.open(prediction_obj.image.path) as img:
                     prediction_obj.image_size = f"{img.size[0]}x{img.size[1]}"
-                
+
                 prediction_obj.save()
-                
+
                 messages.success(request, 'Imagen procesada exitosamente!')
                 return redirect('skin_detector:prediction_detail', pk=prediction_obj.pk)
-                
+
             except Exception as e:
                 logger.error(f"Error en predicción: {str(e)}")
                 messages.error(request, f'Error procesando imagen: {str(e)}')
-                prediction_obj.delete()  # Limpiar imagen si falla
+                try:
+                    prediction_obj.delete()  # Limpiar imagen si falla
+                except Exception:
+                    pass
                 
     else:
         form = SkinImageUploadForm()
     
     # Obtener últimas predicciones
-    recent_predictions = SkinImagePrediction.objects.filter(
-        predicted_class__isnull=False
-    ).order_by('-processed_at')[:5]
+    try:
+        if request.user.is_authenticated:
+            # Mostrar solo las últimas predicciones del usuario autenticado
+            recent_predictions = SkinImagePrediction.objects.filter(
+                predicted_class__isnull=False,
+                user=request.user
+            ).order_by('-processed_at')[:5]
+        else:
+            recent_predictions = SkinImagePrediction.objects.filter(
+                predicted_class__isnull=False
+            ).order_by('-processed_at')[:5]
+    except OperationalError:
+        # Si la columna user no existe u otro error de esquema, caer a versión global
+        recent_predictions = SkinImagePrediction.objects.filter(predicted_class__isnull=False).order_by('-processed_at')[:5]
     
     context = {
         'form': form,
@@ -277,11 +309,20 @@ def diagnostico(request):
     return render(request, 'skin_detector/home.html', context)
 
 
+@login_required
 def prediction_detail(request, pk):
     """
     Detalle de una predicción específica
     """
-    prediction = get_object_or_404(SkinImagePrediction, pk=pk)
+    try:
+        prediction = get_object_or_404(SkinImagePrediction, pk=pk)
+
+        # Verificar propiedad: si la predicción tiene usuario y no coincide, denegar acceso
+        if prediction.user and prediction.user != request.user:
+            return HttpResponse('No autorizado', status=403)
+    except OperationalError:
+        # Esquema desactualizado: indicar al administrador que ejecute migraciones
+        return HttpResponse('Error: esquema de base de datos desactualizado. Ejecute las migraciones (manage.py migrate).', status=500)
     
     # Obtener predictor para información adicional
     try:
@@ -333,11 +374,13 @@ def prediction_detail(request, pk):
     return render(request, 'skin_detector/prediction_detail.html', context)
 
 
+@login_required
 def prediction_history(request):
     """
     Historial de todas las predicciones
     """
-    predictions = SkinImagePrediction.objects.all().order_by('-uploaded_at')
+    # Mostrar solo predicciones del usuario autenticado
+    predictions = SkinImagePrediction.objects.filter(user=request.user).order_by('-uploaded_at')
     
     context = {
         'predictions': predictions,
@@ -347,11 +390,19 @@ def prediction_history(request):
     return render(request, 'skin_detector/history.html', context)
 
 
+@login_required
 def prediction_pdf(request, pk):
     """
     Genera un PDF con el reporte de la predicción.
     """
-    prediction = get_object_or_404(SkinImagePrediction, pk=pk)
+    try:
+        prediction = get_object_or_404(SkinImagePrediction, pk=pk)
+
+        # Verificar propiedad: si la predicción tiene usuario y no coincide, denegar acceso
+        if prediction.user and prediction.user != request.user:
+            return HttpResponse('No autorizado', status=403)
+    except OperationalError:
+        return HttpResponse('Error: esquema de base de datos desactualizado. Ejecute las migraciones (manage.py migrate).', status=500)
 
     # Preparar contexto similar a prediction_detail
     top_predictions = None
@@ -423,6 +474,7 @@ def prediction_pdf(request, pk):
 
 
 @csrf_exempt
+@login_required
 def quick_predict(request):
     """
     Predicción rápida sin guardar en base de datos
@@ -469,14 +521,20 @@ def quick_predict(request):
 
 
 @require_http_methods(['POST'])
+@login_required
 def save_and_predict(request):
     """Guarda la imagen enviada, ejecuta la predicción y devuelve URL del detalle."""
     form = SkinImageUploadForm(request.POST, request.FILES)
     if not form.is_valid():
         return JsonResponse({'success': False, 'error': 'Formulario inválido', 'form_errors': form.errors}, status=400)
 
+    prediction_obj = None
     try:
-        prediction_obj = form.save()
+        # Guardar sin commit para asignar usuario si está autenticado
+        prediction_obj = form.save(commit=False)
+        if request.user.is_authenticated:
+            prediction_obj.user = request.user
+        prediction_obj.save()
 
         # Realizar predicción
         predictor = get_predictor()
@@ -503,7 +561,8 @@ def save_and_predict(request):
         logger.exception('Error saving and predicting image')
         # Intentar limpiar archivo si fue creado
         try:
-            prediction_obj.delete()
+            if prediction_obj:
+                prediction_obj.delete()
         except Exception:
             pass
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
@@ -513,6 +572,7 @@ def save_and_predict(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@login_required
 def api_predict(request):
     """
     API endpoint para predicción
@@ -572,6 +632,7 @@ def api_predict(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+@login_required
 def api_info(request):
     """
     Información sobre las clases que puede detectar el modelo
@@ -606,12 +667,20 @@ def api_info(request):
 
 
 @require_http_methods(["DELETE", "POST"])
+@login_required
 def delete_prediction(request, pk):
     """
     Eliminar una predicción del historial
     """
     try:
-        prediction = get_object_or_404(SkinImagePrediction, pk=pk)
+        try:
+            prediction = get_object_or_404(SkinImagePrediction, pk=pk)
+
+            # Verificar propiedad: solo el propietario puede eliminar
+            if prediction.user and prediction.user != request.user:
+                return JsonResponse({'success': False, 'error': 'No autorizado'}, status=403)
+        except OperationalError:
+            return JsonResponse({'success': False, 'error': 'Esquema de base de datos desactualizado. Ejecute las migraciones.'}, status=500)
         
         # Eliminar archivo de imagen si existe
         if prediction.image:

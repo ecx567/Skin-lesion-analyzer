@@ -10,6 +10,7 @@ Versión: 1.0.0
 """
 
 from django.db import models
+from django.conf import settings
 from django.core.validators import FileExtensionValidator
 import os
 
@@ -61,6 +62,16 @@ class SkinImagePrediction(models.Model):
         upload_to='skin_images/',
         validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png'])],
         help_text="Subir imagen en formato JPG, JPEG o PNG"
+    )
+
+    # Usuario propietario de la predicción (opcional para soportar datos antiguos)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='predictions',
+        help_text='Usuario que creó la predicción (opcional)'
     )
     
     # Clase predicha por el modelo de IA

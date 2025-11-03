@@ -10,7 +10,9 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     
     # Páginas web
-    path('', views.landing, name='landing'),  # Nueva página de presentación
+    # Mostrar login en la raíz para que el usuario vea primero la pantalla de inicio de sesión
+    path('', views.login_view, name='root_login'),
+    path('landing/', views.landing, name='landing'),  # Nueva página de presentación (ahora en /landing/)
     path('diagnostico/', views.diagnostico, name='diagnostico'),  # Página de diagnóstico (antiguo home)
     path('disease-info/<str:disease_code>/', views.disease_info, name='disease_info'),  # Info de enfermedades
     path('prediction/<int:pk>/', views.prediction_detail, name='prediction_detail'),
