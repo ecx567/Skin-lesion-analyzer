@@ -237,3 +237,25 @@ class SkinImagePrediction(models.Model):
         
         # Llamar al método delete del padre
         super().delete(*args, **kwargs)
+
+
+class SocialAccount(models.Model):
+    """
+    Modelo ligero para vincular cuentas externas (por ejemplo Google) a usuarios locales.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='social_accounts'
+    )
+    provider = models.CharField(max_length=32)
+    provider_user_id = models.CharField(max_length=255)
+    email = models.EmailField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('provider', 'provider_user_id')
+        indexes = [models.Index(fields=['provider', 'provider_user_id'], name='social_provider_idx')]
+
+    def __str__(self):
+        return f"{self.provider} account for {self.user.username} ({self.email})"

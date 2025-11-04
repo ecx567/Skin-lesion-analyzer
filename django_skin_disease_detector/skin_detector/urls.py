@@ -8,6 +8,11 @@ urlpatterns = [
     path('register/', views.register_view, name='register'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
+    # Google OAuth2
+    path('auth/google/', views.google_login, name='google_login'),
+    path('auth/google/callback/', views.google_callback, name='google_callback'),
+    path('auth/google/unlink/', views.google_unlink, name='google_unlink'),
+    path('profile/', views.profile_view, name='profile'),
     
     # Páginas web
     # Mostrar login en la raíz para que el usuario vea primero la pantalla de inicio de sesión
