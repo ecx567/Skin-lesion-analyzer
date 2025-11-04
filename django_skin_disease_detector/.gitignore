@@ -1,0 +1,32 @@
+.env
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# VSCode
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Django
+db.sqlite3
+/staticfiles/
+/media/
+
+# Logs
+*.log
+
+# Byte-compiled
+*.pyc
+
+# Ignore env example is okay to keep
+!.env.example
