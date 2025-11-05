@@ -36,37 +36,44 @@ class SkinDiseasePredictor:
             'akiec': {
                 'severity': 'Moderada',
                 'description': 'Lesiones precancerosas causadas por daño solar crónico.',
-                'recommendation': 'Consulte a un dermatólogo para evaluación y tratamiento.'
+                'recommendation': 'Consulte a un dermatólogo para evaluación y tratamiento.',
+                'risk_level': 3
             },
             'bcc': {
                 'severity': 'Alta',
                 'description': 'Tipo más común de cáncer de piel, generalmente de crecimiento lento.',
-                'recommendation': 'Requiere atención médica inmediata. Consulte a un oncólogo dermatólogo.'
+                'recommendation': 'Requiere atención médica inmediata. Consulte a un oncólogo dermatólogo.',
+                'risk_level': 4
             },
             'bkl': {
                 'severity': 'Baja',
                 'description': 'Lesión benigna común, no cancerosa.',
-                'recommendation': 'Generalmente no requiere tratamiento, pero monitoree cambios.'
+                'recommendation': 'Generalmente no requiere tratamiento, pero monitoree cambios.',
+                'risk_level': 1
             },
             'df': {
                 'severity': 'Baja',
                 'description': 'Tumor benigno del tejido conectivo de la piel.',
-                'recommendation': 'Lesión benigna. Consulte si hay cambios o molestias.'
+                'recommendation': 'Lesión benigna. Consulte si hay cambios o molestias.',
+                'risk_level': 1
             },
             'mel': {
                 'severity': 'Muy Alta',
                 'description': 'Forma más agresiva de cáncer de piel.',
-                'recommendation': 'URGENTE: Consulte inmediatamente a un oncólogo dermatólogo.'
+                'recommendation': '⚠️ URGENTE: Consulte inmediatamente a un oncólogo dermatólogo.',
+                'risk_level': 5
             },
             'nv': {
                 'severity': 'Baja',
                 'description': 'Lunares comunes, generalmente benignos.',
-                'recommendation': 'Monitoree cambios. Consulte si nota alteraciones en forma, color o tamaño.'
+                'recommendation': 'Monitoree cambios. Consulte si nota alteraciones en forma, color o tamaño.',
+                'risk_level': 1
             },
             'vasc': {
                 'severity': 'Baja a Moderada',
                 'description': 'Lesiones relacionadas con vasos sanguíneos de la piel.',
-                'recommendation': 'Consulte a un dermatólogo para evaluación apropiada.'
+                'recommendation': 'Consulte a un dermatólogo para evaluación apropiada.',
+                'risk_level': 2
             }
         }
         
@@ -74,92 +81,56 @@ class SkinDiseasePredictor:
         self._load_model()
     
     def _load_model(self):
-        """Cargar el modelo H5 entrenado con compatibilidad mejorada"""
+        """Cargar el modelo H5 entrenado con Keras 3.x y TensorFlow 2.20+"""
         try:
             model_path = os.path.join(settings.BASE_DIR, 'models', 'improved_balanced_7class_model.h5')
+            
+            logger.info(f"Intentando cargar modelo desde: {model_path}")
             
             if not os.path.exists(model_path):
                 raise FileNotFoundError(f"Modelo no encontrado en: {model_path}")
             
-            # Configurar opciones de carga personalizadas para compatibilidad
-            custom_objects = {}
+            # Verificar tamaño del archivo
+            file_size_mb = os.path.getsize(model_path) / (1024 * 1024)
+            logger.info(f"Tamaño del archivo del modelo: {file_size_mb:.2f} MB")
             
-            # Cargar modelo con configuración específica para evitar errores de batch_shape
-            with tf.keras.utils.custom_object_scope(custom_objects):
-                # Intentar cargar modelo sin compilar primero
-                try:
-                    self.model = tf.keras.models.load_model(model_path, compile=False)
-                except Exception as e:
-                    logger.warning(f"Error en carga normal, intentando método alternativo: {str(e)}")
-                    
-                    # Método alternativo: usar modelo dummy directamente
-                    # No intentamos cargar pesos incompatibles
-                    logger.info("Creando modelo dummy para demostración")
-                    self.model = self._create_dummy_model()
+            # Cargar modelo con Keras 3.x
+            # El modelo fue entrenado con Focal Loss personalizada, así que cargamos sin compilar
+            logger.info("Cargando modelo con Keras 3.x (sin compilar)...")
+            self.model = tf.keras.models.load_model(model_path, compile=False)
             
             # Recompilar con pérdida estándar para predicción
+            logger.info("Recompilando modelo con pérdida estándar...")
             self.model.compile(
                 optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
                 loss='categorical_crossentropy',
                 metrics=['accuracy']
             )
             
-            logger.info(f"Modelo cargado exitosamente desde: {model_path}")
-            logger.info(f"Arquitectura del modelo: {len(self.model.layers)} capas")
-            logger.info(f"Input shape del modelo: {self.model.input_shape}")
+            # Verificar la arquitectura del modelo
+            logger.info(f"✅ Modelo cargado exitosamente!")
+            logger.info(f"   - Capas totales: {len(self.model.layers)}")
+            logger.info(f"   - Input shape: {self.model.input_shape}")
+            logger.info(f"   - Output shape: {self.model.output_shape}")
+            logger.info(f"   - Parámetros totales: {self.model.count_params():,}")
+            
+            # Hacer una predicción de prueba
+            test_input = np.random.rand(1, 224, 224, 3).astype(np.float32)
+            test_output = self.model.predict(test_input, verbose=0)
+            logger.info(f"   - Test prediction shape: {test_output.shape}")
+            logger.info(f"   - Test prediction sum: {np.sum(test_output):.4f}")
+            
+            if test_output.shape[1] != 7:
+                raise ValueError(f"El modelo no tiene 7 salidas. Tiene: {test_output.shape[1]}")
+            
+            logger.info("🎉 Modelo listo para usar!")
             
         except Exception as e:
-            logger.error(f"Error cargando modelo: {str(e)}")
-            # Crear modelo dummy para evitar crashes
-            self.model = self._create_dummy_model()
-            logger.warning("Usando modelo dummy debido al error de carga")
-    
-    def _create_compatible_model(self):
-        """Crear modelo compatible con arquitectura esperada"""
-        try:
-            from tensorflow.keras.models import Sequential
-            from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, BatchNormalization
-            from tensorflow.keras.applications import EfficientNetB0
-            
-            # Crear modelo basado en EfficientNet (arquitectura común para clasificación de piel)
-            base_model = EfficientNetB0(
-                weights='imagenet',
-                include_top=False,
-                input_shape=(224, 224, 3)
-            )
-            
-            model = tf.keras.Sequential([
-                base_model,
-                tf.keras.layers.GlobalAveragePooling2D(),
-                tf.keras.layers.Dropout(0.5),
-                tf.keras.layers.Dense(512, activation='relu'),
-                tf.keras.layers.BatchNormalization(),
-                tf.keras.layers.Dropout(0.3),
-                tf.keras.layers.Dense(7, activation='softmax')  # 7 clases
-            ])
-            
-            return model
-            
-        except Exception as e:
-            logger.error(f"Error creando modelo compatible: {str(e)}")
-            return self._create_dummy_model()
-    
-    def _create_dummy_model(self):
-        """Crear modelo dummy para evitar crashes"""
-        try:
-            model = tf.keras.Sequential([
-                tf.keras.layers.Input(shape=(224, 224, 3)),
-                tf.keras.layers.Flatten(),
-                tf.keras.layers.Dense(128, activation='relu'),
-                tf.keras.layers.Dense(7, activation='softmax')
-            ])
-            
-            logger.info("Modelo dummy creado")
-            return model
-            
-        except Exception as e:
-            logger.error(f"Error creando modelo dummy: {str(e)}")
-            return None
+            logger.error(f"❌ Error cargando modelo: {str(e)}")
+            logger.error(f"   Tipo de error: {type(e).__name__}")
+            import traceback
+            logger.error(f"   Traceback: {traceback.format_exc()}")
+            raise Exception(f"No se pudo cargar el modelo: {str(e)}")
     
     def preprocess_image(self, image_path: str) -> np.ndarray:
         """
@@ -360,6 +331,26 @@ class SkinDiseasePredictor:
             
         except Exception:
             return False
+    
+    def get_model_summary(self) -> Dict:
+        """
+        Obtener resumen del modelo
+        """
+        if self.model is None:
+            return {'error': 'Modelo no cargado'}
+        
+        try:
+            return {
+                'loaded': True,
+                'total_layers': len(self.model.layers),
+                'input_shape': str(self.model.input_shape),
+                'output_shape': str(self.model.output_shape),
+                'total_params': self.model.count_params(),
+                'classes': list(self.class_names.keys()),
+                'class_names': {k: v['spanish'] for k, v in self.class_names.items()}
+            }
+        except Exception as e:
+            return {'error': str(e)}
 
 
 # Instancia global del predictor (singleton)
