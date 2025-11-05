@@ -143,4 +143,3 @@ LOGOUT_REDIRECT_URL = 'skin_detector:landing'
 # Google OAuth2 settings (loaded from environment/.env)
 GOOGLE_OAUTH2_CLIENT_ID = os.getenv('GOOGLE_OAUTH2_CLIENT_ID')
 GOOGLE_OAUTH2_CLIENT_SECRET = os.getenv('GOOGLE_OAUTH2_CLIENT_SECRET')
-
