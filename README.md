@@ -6,6 +6,7 @@
 ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
+
 ## 📋 Tabla de Contenidos
 
 - [Descripción del Proyecto](#-descripción-del-proyecto)
