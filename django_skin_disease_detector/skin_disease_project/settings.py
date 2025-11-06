@@ -64,8 +64,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'skin_disease_project.wsgi.application'
 
-# Database
-# Using SQLite for local development, can switch to Supabase PostgreSQL
+# Database - Using SQLite for local development (simpler and faster)
+# For production, switch to PostgreSQL/Supabase
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -73,12 +73,8 @@ DATABASES = {
     }
 }
 
-# Supabase Configuration
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')
-SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
-
-# Uncomment below to use Supabase PostgreSQL instead of SQLite
+# Supabase PostgreSQL Configuration (commented for now)
+# Uncomment when deploying to production or when network issues are resolved
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',
@@ -87,8 +83,18 @@ SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
 #         'PASSWORD': os.getenv('DB_PASSWORD'),
 #         'HOST': os.getenv('DB_HOST'),
 #         'PORT': os.getenv('DB_PORT', '6543'),
+#         'OPTIONS': {
+#             'connect_timeout': 10,
+#             'sslmode': 'require',
+#         },
+#         'CONN_MAX_AGE': 0,
 #     }
 # }
+
+# Supabase Configuration
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')
+SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
 
 # Internationalization
 LANGUAGE_CODE = 'es-es'
