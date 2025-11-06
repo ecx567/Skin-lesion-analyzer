@@ -1,0 +1,15 @@
+Hola {{ user.get_full_name|default:user.username }},
+
+Adjunto encontrarás el reporte de diagnóstico generado por DermatologIA (Reporte ID: {{ prediction.pk }}).
+
+Resumen rápido:
+- Predicción: {% if prediction.get_predicted_disease_name %}{{ prediction.get_predicted_disease_name }}{% else %}{{ prediction.predicted_class }}{% endif %}
+- Confianza: {% if prediction.confidence_score %}{{ prediction.confidence_score|floatformat:2 }}{% else %}N/A{% endif %}
+- Fecha: {{ prediction.processed_at }}
+
+Puede acceder al detalle y al historial en su cuenta: {{ request.build_absolute_uri }}
+
+Este reporte es únicamente informativo y no sustituye una valoración médica profesional. Si el resultado indica una condición grave, consulte a un dermatólogo lo antes posible.
+
+Atentamente,
+Equipo DermatologIA

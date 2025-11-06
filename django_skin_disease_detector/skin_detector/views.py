@@ -38,9 +38,97 @@ from django.conf import settings
 from django.contrib.staticfiles import finders
 from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
 from django.contrib.auth import update_session_auth_hash
+from django.core.mail import EmailMessage
+from io import BytesIO
 
 # Configurar logger para esta aplicación
 logger = logging.getLogger(__name__)
+
+
+def send_prediction_report_email(request, prediction_obj):
+    """Genera (si es posible) un PDF del reporte y lo envía al email del usuario propietario.
+
+    No lanza excepciones hacia el caller; registra errores y continúa.
+    """
+    try:
+        # Determinar correo destino: preferir el del objeto prediction.user, si existe
+        user_email = None
+        try:
+            if getattr(prediction_obj, 'user', None) and prediction_obj.user.email:
+                user_email = prediction_obj.user.email
+        except Exception:
+            user_email = None
+
+        try:
+            if (not user_email) and request and getattr(request, 'user', None) and request.user.is_authenticated:
+                user_email = request.user.email
+        except Exception:
+            pass
+
+        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or getattr(settings, 'EMAIL_HOST_USER', None)
+
+        if not user_email or not from_email:
+            return False
+
+        # Preparar contexto
+        context = {
+            'prediction': prediction_obj,
+            'top_predictions': None,
+            'title': f'Reporte Predicción #{prediction_obj.pk}'
+        }
+
+        try:
+            # Intentar generar PDF con xhtml2pdf
+            from xhtml2pdf import pisa
+            html = render_to_string('skin_detector/prediction_report.html', context)
+
+            def link_callback(uri, rel):
+                if uri.startswith(settings.MEDIA_URL):
+                    path = os.path.join(settings.MEDIA_ROOT, uri.replace(settings.MEDIA_URL, ''))
+                    return path
+                if uri.startswith(settings.STATIC_URL):
+                    static_path = uri.replace(settings.STATIC_URL, '')
+                    result_path = finders.find(static_path)
+                    if result_path:
+                        return result_path
+                return uri
+
+            pdf_bytes = BytesIO()
+            pisa_status = pisa.CreatePDF(src=html, dest=pdf_bytes, link_callback=link_callback)
+            pdf_bytes.seek(0)
+
+            if not pisa_status.err:
+                subject = f'DermatologIA - Reporte diagnóstico #{prediction_obj.pk}'
+                body = render_to_string('skin_detector/email/prediction_email.txt', {'user': request.user, 'prediction': prediction_obj, 'request': request})
+                email = EmailMessage(subject=subject, body=body, from_email=from_email, to=[user_email])
+                email.attach(f'prediction_{prediction_obj.pk}.pdf', pdf_bytes.read(), 'application/pdf')
+                email.send(fail_silently=True)
+                return True
+        except Exception:
+            logger.exception('Error generando PDF para email; se enviará enlace en su lugar')
+
+        # Fallback: enviar correo con enlace al detalle
+        try:
+            subject = f'DermatologIA - Reporte diagnóstico #{prediction_obj.pk}'
+            detail_url = request.build_absolute_uri(reverse('skin_detector:prediction_detail', args=[prediction_obj.pk]))
+            body = (
+                f'Hola {request.user.get_full_name() or request.user.username},\n\n'
+                f'Se ha generado su reporte de diagnóstico (ID: {prediction_obj.pk}).\n'
+                f'Predicción: {prediction_obj.get_predicted_disease_name if hasattr(prediction_obj, "get_predicted_disease_name") else prediction_obj.predicted_class}\n'
+                f'Confianza: {round(prediction_obj.confidence_score * 100, 2) if prediction_obj.confidence_score is not None else "N/A"}%\n\n'
+                f'Puede ver el detalle en: {detail_url}\n\n'
+                'Este mensaje es informativo y no reemplaza una valoración médica profesional.\n\n'
+                'Atentamente,\nEquipo DermatologIA'
+            )
+            email = EmailMessage(subject=subject, body=body, from_email=from_email, to=[user_email])
+            email.send(fail_silently=True)
+            return True
+        except Exception:
+            logger.exception('Error enviando email de fallback con enlace')
+            return False
+    except Exception:
+        logger.exception('send_prediction_report_email fallo inesperado')
+        return False
 
 
 # ==================== VISTAS DE AUTENTICACIÓN ====================
@@ -528,6 +616,11 @@ def diagnostico(request):
                     prediction_obj.image_size = f"{img.size[0]}x{img.size[1]}"
 
                 prediction_obj.save()
+                # Enviar correo con reporte al usuario (si corresponde)
+                try:
+                    send_prediction_report_email(request, prediction_obj)
+                except Exception:
+                    logger.exception('Error intentando enviar email tras diagnostico (diagnostico view)')
 
                 messages.success(request, 'Imagen procesada exitosamente!')
                 return redirect('skin_detector:prediction_detail', pk=prediction_obj.pk)
@@ -812,6 +905,11 @@ def save_and_predict(request):
             prediction_obj.image_size = f"{img.size[0]}x{img.size[1]}"
 
         prediction_obj.save()
+        # Enviar correo (si corresponde)
+        try:
+            send_prediction_report_email(request, prediction_obj)
+        except Exception:
+            logger.exception('Error intentando enviar correo de reporte (save_and_predict)')
 
         redirect_url = request.build_absolute_uri(reverse('skin_detector:prediction_detail', args=[prediction_obj.pk]))
         return JsonResponse({'success': True, 'redirect_url': redirect_url})
