@@ -1,24 +1,29 @@
 # Django Framework
-Django==4.2.7
-djangorestframework==3.16.1
-django-cors-headers==4.9.0
+Django>=5.2.0
+djangorestframework>=3.14.0
+django-cors-headers>=4.0.0
 
-# Image Processing
-Pillow==10.0.0
-
-
+# AI/ML - Versiones actualizadas y compatibles
+tensorflow>=2.20.0
+keras>=3.12.0
+numpy>=2.2.0,<2.3.0
+pillow>=12.0.0
+scikit-learn>=1.7.0
+pandas>=2.3.0
+opencv-python>=4.12.0
+h5py>=3.15.0
 
 # Database
-psycopg2-binary==2.9.9
-supabase==2.3.4
+psycopg2-binary
+supabase
 
 # Environment Variables
-python-decouple==3.8
-python-dotenv==1.0.0
+python-decouple
+python-dotenv
 
 # Utilities
-requests==2.31.0
+requests
 
 # PDF generation
-xhtml2pdf==0.2.8
-reportlab==3.6.12
+xhtml2pdf
+reportlab

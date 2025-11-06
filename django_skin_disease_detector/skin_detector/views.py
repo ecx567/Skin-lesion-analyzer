@@ -179,6 +179,259 @@ def register_view(request):
     }
     return render(request, 'skin_detector/register.html', context)
 
+def google_login(request):
+    """
+    Inicia flujo OAuth2 con Google: redirige a la página de autorización.
+    Requiere configurar GOOGLE_OAUTH2_CLIENT_ID y GOOGLE_OAUTH2_REDIRECT_URI en settings.
+    """
+    client_id = getattr(settings, 'GOOGLE_OAUTH2_CLIENT_ID', None)
+    redirect_uri = request.build_absolute_uri(reverse('skin_detector:google_callback'))
+    if not client_id:
+        messages.error(request, 'Google OAuth no configurado (GOOGLE_OAUTH2_CLIENT_ID faltante).')
+        return redirect('skin_detector:login')
+
+    state = str(uuid.uuid4())
+    request.session['google_oauth_state'] = state
+
+    auth_url = (
+        'https://accounts.google.com/o/oauth2/v2/auth'
+        f'?response_type=code&client_id={client_id}'
+        f'&redirect_uri={redirect_uri}'
+        '&scope=openid%20email%20profile'
+        f'&state={state}&access_type=online&prompt=select_account'
+    )
+
+    return redirect(auth_url)
+
+
+def google_callback(request):
+    """
+    Callback que Google redirige con `code`. Intercambia code por token, obtiene userinfo,
+    crea/obtiene usuario local y hace login.
+    """
+    error = request.GET.get('error')
+    if error:
+        messages.error(request, f'Google OAuth error: {error}')
+        return redirect('skin_detector:login')
+
+    code = request.GET.get('code')
+    state = request.GET.get('state')
+    session_state = request.session.pop('google_oauth_state', None)
+    if not code or not state or state != session_state:
+        messages.error(request, 'Estado de OAuth inválido o código faltante.')
+        return redirect('skin_detector:login')
+
+    client_id = getattr(settings, 'GOOGLE_OAUTH2_CLIENT_ID', None)
+    client_secret = getattr(settings, 'GOOGLE_OAUTH2_CLIENT_SECRET', None)
+    redirect_uri = request.build_absolute_uri(reverse('skin_detector:google_callback'))
+
+    if not client_id or not client_secret:
+        messages.error(request, 'Google OAuth no configurado (cliente/secret faltantes).')
+        return redirect('skin_detector:login')
+
+    token_endpoint = 'https://oauth2.googleapis.com/token'
+    try:
+        token_resp = requests.post(token_endpoint, data={
+            'code': code,
+            'client_id': client_id,
+            'client_secret': client_secret,
+            'redirect_uri': redirect_uri,
+            'grant_type': 'authorization_code'
+        }, timeout=10)
+        token_resp.raise_for_status()
+        token_data = token_resp.json()
+        access_token = token_data.get('access_token')
+    except Exception as e:
+        messages.error(request, f'Error intercambiando token con Google: {e}')
+        return redirect('skin_detector:login')
+
+    # Obtener información del usuario
+    try:
+        userinfo_resp = requests.get('https://openidconnect.googleapis.com/v1/userinfo', headers={
+            'Authorization': f'Bearer {access_token}'
+        }, timeout=10)
+        userinfo_resp.raise_for_status()
+        userinfo = userinfo_resp.json()
+    except Exception as e:
+        messages.error(request, f'Error obteniendo información de usuario: {e}')
+        return redirect('skin_detector:login')
+    email = userinfo.get('email')
+    name = userinfo.get('name') or ''
+    provider_user_id = userinfo.get('sub')
+    email_verified = userinfo.get('email_verified', False)
+    if not email:
+        messages.error(request, 'No se pudo obtener correo electrónico de Google.')
+        return redirect('skin_detector:login')
+
+    # Crear o obtener usuario local
+    from django.contrib.auth.models import User
+
+    try:
+        # Si el usuario ya tiene una SocialAccount con este provider_user_id, usarla
+        if provider_user_id:
+            sa = SocialAccount.objects.filter(provider='google', provider_user_id=provider_user_id).first()
+        else:
+            sa = None
+
+        # Si el usuario está autenticado, estamos en flujo de vinculación
+        if request.user.is_authenticated:
+            if not provider_user_id:
+                messages.error(request, 'No se pudo obtener identificación de Google para vincular.')
+                return redirect('skin_detector:diagnostico')
+
+            # Si existe y pertenece a otro usuario, denegar
+            if sa and sa.user != request.user:
+                messages.error(request, 'Esta cuenta de Google ya está vinculada a otra cuenta.')
+                return redirect('skin_detector:diagnostico')
+
+            if sa and sa.user == request.user:
+                messages.info(request, 'Tu cuenta de Google ya está vinculada.')
+                return redirect('skin_detector:diagnostico')
+
+            # Requerir correo verificado para vincular
+            if not email_verified:
+                messages.error(request, 'Para vincular la cuenta de Google, el correo debe estar verificado en Google.')
+                return redirect('skin_detector:diagnostico')
+
+            # Crear SocialAccount
+            SocialAccount.objects.create(
+                user=request.user,
+                provider='google',
+                provider_user_id=provider_user_id,
+                email=email
+            )
+            messages.success(request, 'Cuenta de Google vinculada correctamente.')
+            return redirect('skin_detector:diagnostico')
+
+        # No autenticado: intentar login por SocialAccount
+        if sa:
+            login(request, sa.user)
+            messages.success(request, f'Has iniciado sesión como {sa.user.username} usando Google.')
+            return redirect('skin_detector:diagnostico')
+
+        # No hay SocialAccount: buscar usuario por email
+        user = User.objects.filter(email__iexact=email).first()
+        if user:
+            # Auto-vincular si correo verificado
+            if provider_user_id and email_verified:
+                try:
+                    SocialAccount.objects.create(
+                        user=user,
+                        provider='google',
+                        provider_user_id=provider_user_id,
+                        email=email
+                    )
+                except Exception:
+                    # Ignorar si hay conflicto de unicidad
+                    pass
+
+            login(request, user)
+            messages.success(request, f'Has iniciado sesión como {user.username} usando Google.')
+            return redirect('skin_detector:diagnostico')
+
+        # Crear nuevo usuario y vincular
+        base_username = email.split('@')[0]
+        username = base_username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+
+        user = User.objects.create_user(username=username, email=email)
+        if ' ' in name:
+            first, *rest = name.split(' ')
+            user.first_name = first
+            user.last_name = ' '.join(rest)
+        else:
+            user.first_name = name
+        user.set_unusable_password()
+        user.save()
+
+        if provider_user_id:
+            try:
+                SocialAccount.objects.create(
+                    user=user,
+                    provider='google',
+                    provider_user_id=provider_user_id,
+                    email=email
+                )
+            except Exception:
+                pass
+        login(request, user)
+        messages.success(request, f'Cuenta creada y autenticada como {user.username} (Google).')
+        return redirect('skin_detector:diagnostico')
+
+        login(request, user)
+        messages.success(request, f'Cuenta creada y autenticada como {user.username} (Google).')
+        return redirect('skin_detector:diagnostico')
+
+    except Exception as e:
+        logger.exception('Error en flujo Google OAuth')
+        messages.error(request, f'Error creando o accediendo al usuario: {e}')
+        return redirect('skin_detector:login')
+
+
+@login_required
+def google_unlink(request):
+    """Desvincula la cuenta de Google del usuario autenticado si existe."""
+    try:
+        sa = SocialAccount.objects.filter(user=request.user, provider='google').first()
+        if not sa:
+            messages.info(request, 'No hay ninguna cuenta de Google vinculada a tu perfil.')
+            return redirect('skin_detector:diagnostico')
+
+        # Comprobar que el usuario tenga otra forma de autenticación
+        has_password = request.user.has_usable_password()
+        has_other_social = SocialAccount.objects.filter(user=request.user).exclude(provider='google').exists()
+        if not has_password and not has_other_social:
+            messages.error(
+                request,
+                'No puedes desvincular Google porque no tienes otra forma de inicio de sesión. ' 
+                'Por favor establece una contraseña en tu perfil o añade otro método de acceso antes de desvincular.'
+            )
+            return redirect('skin_detector:diagnostico')
+
+        sa.delete()
+        messages.success(request, 'Cuenta de Google desvinculada correctamente.')
+        return redirect('skin_detector:diagnostico')
+    except Exception as e:
+        logger.exception('Error desvinculando cuenta Google')
+        messages.error(request, f'Error desvinculando cuenta: {e}')
+        return redirect('skin_detector:diagnostico')
+
+
+@login_required
+def profile_view(request):
+    """Página de perfil donde el usuario puede ver su info y establecer/cambiar contraseña.
+
+    - Si el usuario tiene contraseña usable, se muestra PasswordChangeForm (requiere la contraseña actual).
+    - Si no tiene contraseña usable (p. ej. creado solo por Google), se muestra SetPasswordForm para crear una.
+    """
+    user = request.user
+    if user.has_usable_password():
+        FormClass = PasswordChangeForm
+    else:
+        FormClass = SetPasswordForm
+
+    if request.method == 'POST':
+        form = FormClass(user, request.POST) if FormClass is PasswordChangeForm else FormClass(user, request.POST)
+        if form.is_valid():
+            form.save()
+            # Mantener la sesión válida después de cambiar la contraseña
+            update_session_auth_hash(request, user)
+            messages.success(request, 'Contraseña establecida/cambiada correctamente.')
+            return redirect('skin_detector:profile')
+        else:
+            messages.error(request, 'Corrige los errores en el formulario.')
+    else:
+        form = FormClass(user) if FormClass is PasswordChangeForm else FormClass(user)
+
+    context = {
+        'title': 'Mi Perfil',
+        'form': form,
+        'user_obj': user
+    }
+    return render(request, 'skin_detector/profile.html', context)
 
 def google_login(request):
     """
