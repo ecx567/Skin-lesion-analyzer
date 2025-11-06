@@ -245,7 +245,7 @@
                         Recordarme
                     </label>
                 </div>
-                <a href="#" class="forgot-link">¿Olvidaste tu contraseña?</a>
+                <a href="{% url 'skin_detector:password_reset' %}" class="forgot-link">¿Olvidaste tu contraseña?</a>
             </div>
             
             <button type="submit" class="btn btn-login">
@@ -290,14 +290,7 @@
             usernameField.focus();
         }
         
-        // Mensaje temporal para "olvidaste tu contraseña"
-        const forgotLink = document.querySelector('.forgot-link');
-        if (forgotLink) {
-            forgotLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                alert('Función de recuperación de contraseña próximamente. Contacte al administrador.');
-            });
-        }
+        // '¿Olvidaste tu contraseña?' ahora apunta al flujo seguro de restablecimiento de contraseña
     });
 </script>
 {% endblock %}

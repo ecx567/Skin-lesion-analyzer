@@ -157,6 +157,28 @@
         .prediction-card:hover {
             transform: translateY(-5px);
         }
+        /* Override fuerte para encabezados del sidebar en la vista de diagnóstico */
+        main.container .row > .col-lg-4 .card-header {
+            background: linear-gradient(135deg, #2b5aa6 0%, #0b2140 100%) !important;
+            color: #ffffff !important;
+            opacity: 1 !important;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.45) !important;
+        }
+        main.container .row > .col-lg-4 .card-header small,
+        main.container .row > .col-lg-4 .card-header .small {
+            color: rgba(255,255,255,0.95) !important;
+        }
+        /* Corrección: asegurar que el dropdown del navbar (perfil) se muestre por encima
+           de otras tarjetas u elementos que tengan z-index aplicado. */
+        .navbar {
+            position: relative;
+            z-index: 2000; /* por encima de las cards y contenidos */
+        }
+
+        /* Forzar que el menú desplegable de Bootstrap esté más arriba aún en caso de conflicto */
+        .dropdown-menu {
+            z-index: 3000 !important;
+        }
     </style>
     
     {% block extra_css %}{% endblock %}

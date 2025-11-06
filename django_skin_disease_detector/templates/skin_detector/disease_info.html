@@ -257,14 +257,18 @@
                         </span>
                         <input type="text" class="form-control search-input border-start-0 ps-0" 
                                placeholder="Buscar enfermedad por nombre o síntomas..."
-                               id="diseaseSearch">
-                        <select class="form-select" style="max-width: 200px; border-radius: 0 30px 30px 0;">
-                            <option>Todas las enfermedades</option>
+                               id="diseaseSearch" autocomplete="off">
+                        <select id="diseaseSelect" class="form-select" style="max-width: 200px; border-radius: 0 30px 30px 0;">
+                            <option value="">Todas las enfermedades</option>
                         </select>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="container mt-2">
+        <div id="searchResults" class="list-group" style="max-width:820px;margin:0 auto;display:none;z-index:2500;position:relative;"></div>
     </div>
 
     <!-- Disease Information -->
@@ -406,3 +410,91 @@
         </div>
     </div>
 {% endblock main_wrapper %}
+
+{% block extra_js %}
+{{ disease_list|json_script:"disease_data_json" }}
+<script>
+    (function(){
+        const diseases = JSON.parse(document.getElementById('disease_data_json').textContent || '[]');
+        const select = document.getElementById('diseaseSelect');
+        const input = document.getElementById('diseaseSearch');
+        const results = document.getElementById('searchResults');
+
+        if (!select || !input) return;
+
+        // Poblar select con opciones
+        diseases.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.code;
+            opt.textContent = d.full_name + ' (' + d.code.toUpperCase() + ')';
+            select.appendChild(opt);
+        });
+
+        // Manejar selección: navegar a la página de detalle
+        select.addEventListener('change', function(){
+            if (!this.value) return; // blank = todas
+            window.location.href = '/disease-info/' + this.value + '/';
+        });
+
+        // Buscar por texto: nombre, descripción o síntomas
+        function search(term){
+            if (!term || term.length < 1) return [];
+            term = term.toLowerCase();
+            const hits = diseases.filter(d => {
+                if ((d.full_name||'').toLowerCase().includes(term)) return true;
+                if ((d.description||'').toLowerCase().includes(term)) return true;
+                if (Array.isArray(d.symptoms)){
+                    for (const s of d.symptoms){
+                        if ((s||'').toLowerCase().includes(term)) return true;
+                    }
+                }
+                return false;
+            });
+            return hits.slice(0, 10);
+        }
+
+        function renderResults(list){
+            if (!results) return;
+            results.innerHTML = '';
+            if (!list || list.length === 0){ results.style.display = 'none'; return; }
+            list.forEach(d => {
+                const a = document.createElement('a');
+                a.href = '/disease-info/' + d.code + '/';
+                a.className = 'list-group-item list-group-item-action';
+                a.innerHTML = '<strong>' + d.full_name + '</strong> <small class="text-muted ms-2">(' + d.code.toUpperCase() + ')</small><br><small class="text-muted">' + (d.description||'').slice(0,120) + '...</small>';
+                results.appendChild(a);
+            });
+            results.style.display = 'block';
+        }
+
+        let debounceTimer = null;
+        input.addEventListener('input', function(e){
+            clearTimeout(debounceTimer);
+            const term = this.value.trim();
+            debounceTimer = setTimeout(function(){
+                if (!term){ renderResults([]); return; }
+                const hits = search(term);
+                renderResults(hits);
+            }, 200);
+        });
+
+        // Enter -> ir al primer resultado si existe
+        input.addEventListener('keydown', function(e){
+            if (e.key === 'Enter'){
+                e.preventDefault();
+                const hits = search(this.value.trim());
+                if (hits && hits.length > 0){
+                    window.location.href = '/disease-info/' + hits[0].code + '/';
+                }
+            }
+        });
+
+        // Cerrar resultados al hacer clic fuera
+        document.addEventListener('click', function(e){
+            if (results && !results.contains(e.target) && e.target !== input){
+                results.style.display = 'none';
+            }
+        });
+    })();
+</script>
+{% endblock %}

@@ -12,6 +12,7 @@ Versión: 1.0.0
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.models import User
+from django.contrib.auth import password_validation
 from .models import SkinImagePrediction
 from .constants import MAX_FILE_SIZE_MB, ALLOWED_IMAGE_EXTENSIONS
 
@@ -96,7 +97,12 @@ class UserRegistrationForm(UserCreationForm):
         
         # Textos de ayuda personalizados
         self.fields['username'].help_text = 'Requerido. 150 caracteres o menos. Letras, dígitos y @/./+/-/_ solamente.'
-        self.fields['password1'].help_text = 'Mínimo 8 caracteres. No puede ser completamente numérica.'
+        # Use Django's password validators help text so it matches server-side validation
+        try:
+            self.fields['password1'].help_text = password_validation.password_validators_help_text_html()
+        except Exception:
+            # Fallback in case password_validation isn't available for some reason
+            self.fields['password1'].help_text = 'Mínimo 8 caracteres. No puede ser completamente numérica. No debe ser demasiado común. No puede ser similar a tu información personal.'
         self.fields['password2'].help_text = 'Ingrese la misma contraseña para verificación.'
     
     def clean_email(self):

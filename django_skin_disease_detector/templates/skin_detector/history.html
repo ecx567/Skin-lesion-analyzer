@@ -232,12 +232,7 @@
                             Ver Detalle
                         </a>
                         
-                        {% if prediction.predicted_class %}
-                        <button class="btn btn-outline-success btn-sm" 
-                                onclick="quickShare({{ prediction.id }}, '{{ prediction.get_predicted_disease_name }}', {{ prediction.get_confidence_percentage }})">
-                            <i class="fas fa-share-alt me-1"></i>
-                        </button>
-                        {% endif %}
+                        {# Botón de compartir eliminado: compartir ahora se gestiona desde el backend por email #}
                         
                         <button class="btn btn-outline-danger btn-sm" 
                                 onclick="confirmSingleDelete({{ prediction.id }})">
@@ -433,22 +428,7 @@ function deletePrediction(predictionId, callback) {
     });
 }
 
-function quickShare(id, disease, confidence) {
-    const text = `Resultado de análisis de piel: ${disease} (${confidence}% confianza)`;
-    const url = `${window.location.origin}/prediction/${id}/`;
-    
-    if (navigator.share) {
-        navigator.share({
-            title: 'Resultado de Análisis de Piel',
-            text: text,
-            url: url
-        });
-    } else {
-        navigator.clipboard.writeText(url).then(function() {
-            alert('Enlace copiado al portapapeles');
-        });
-    }
-}
+// quickShare removed: sharing moved to backend email flow (no client-side quick share)
 
 // Inicializar al cargar la página
 $(document).ready(function() {

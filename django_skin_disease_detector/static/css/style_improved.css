@@ -94,6 +94,18 @@ body {
     overflow: hidden;
 }
 
+/* Asegurar que las tarjetas tengan posicionamiento relativo para evitar solapamiento
+   y que los encabezados queden por encima cuando sea necesario (perfil, modales, etc.) */
+.card {
+    position: relative;
+    z-index: 1;
+}
+
+.card > .card-header {
+    position: relative;
+    z-index: 2;
+}
+
 .card:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-xl);
@@ -105,6 +117,40 @@ body {
     border: none;
     padding: 1.5rem;
     font-weight: 700;
+}
+
+/* Fix: asegurar contraste legible en encabezados de card del diagnóstico */
+.card-header {
+    color: #ffffff !important;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.45);
+    -webkit-background-clip: padding-box;
+    background-clip: padding-box;
+}
+
+/* Si algún header tuviera fondo claro por inline styles, forzar fondo oscuro en sidebar específico */
+.col-lg-4 .card-header {
+    /* fallback gradient oscuro para los paneles laterales */
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%) !important;
+    color: #fff !important;
+}
+
+/* Regla más específica para forzar contraste incluso si hay estilos inline o clases "bg-gradient" */
+.col-lg-4 .card-header.bg-gradient,
+.col-lg-4 .card-header.bg-gradient[style],
+.card-header.bg-gradient {
+    background-image: none !important;
+    background: linear-gradient(135deg, #2b5aa6 0%, #0b2140 100%) !important;
+    color: #ffffff !important;
+    opacity: 1 !important;
+}
+
+/* Asegurar que el texto pequeño del encabezado sea legible */
+.col-lg-4 .card-header small,
+.col-lg-4 .card-header .small,
+.card-header small,
+.card-header .small {
+    color: rgba(255,255,255,0.95) !important;
+    opacity: 1 !important;
 }
 
 .card-header h4,

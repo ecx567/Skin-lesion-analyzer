@@ -33,6 +33,9 @@ from .predictor import get_predictor
 import logging
 from django.template.loader import render_to_string
 from django.http import HttpResponse
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.db.models import Avg, Q
+import datetime
 from django.db.utils import OperationalError
 from django.conf import settings
 from django.contrib.staticfiles import finders
@@ -720,9 +723,20 @@ def login_view(request):
             
             if user is not None:
                 login(request, user)
+                # Handle "remember me": if checked, persist session; otherwise expire on browser close
+                try:
+                    remember = request.POST.get('remember')
+                    if remember:
+                        request.session.set_expiry(getattr(settings, 'SESSION_COOKIE_AGE', 1209600))
+                    else:
+                        request.session.set_expiry(0)
+                except Exception:
+                    # If anything fails, fallback to default session behaviour
+                    pass
+
                 messages.success(request, f'¡Bienvenido de nuevo, {username}!')
                 logger.info(f'Usuario autenticado: {username}')
-                
+
                 # Redirigir a la página solicitada o al diagnóstico
                 next_page = request.GET.get('next', 'skin_detector:diagnostico')
                 return redirect(next_page)
@@ -984,14 +998,67 @@ def prediction_history(request):
     """
     Historial de todas las predicciones
     """
-    # Mostrar solo predicciones del usuario autenticado
-    predictions = SkinImagePrediction.objects.filter(user=request.user).order_by('-uploaded_at')
-    
+    # Base queryset: sólo predicciones del usuario autenticado
+    qs = SkinImagePrediction.objects.filter(user=request.user)
+
+    # Aplicar filtros GET (date_from, date_to, predicted_class)
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    predicted_class = request.GET.get('predicted_class')
+
+    try:
+        if date_from:
+            # Interpretar fecha yyyy-mm-dd
+            df = datetime.date.fromisoformat(date_from)
+            qs = qs.filter(uploaded_at__date__gte=df)
+        if date_to:
+            dt = datetime.date.fromisoformat(date_to)
+            qs = qs.filter(uploaded_at__date__lte=dt)
+    except Exception:
+        # Si parsing falla, ignorar filtros de fecha
+        pass
+
+    if predicted_class:
+        qs = qs.filter(predicted_class__iexact=predicted_class)
+
+    # Estadísticas sobre el queryset filtrado (antes de paginar)
+    try:
+        total_predictions = qs.count()
+        processed_qs = qs.filter(predicted_class__isnull=False)
+        processed_predictions = processed_qs.count()
+        avg_conf = processed_qs.aggregate(avg=Avg('confidence_score'))['avg'] or 0.0
+        # convertir a porcentaje (0-100) para la plantilla
+        avg_confidence = round((avg_conf or 0.0) * 100, 2)
+        high_risk_predictions = processed_qs.filter(predicted_class__in=['mel', 'bcc', 'akiec']).count()
+    except OperationalError:
+        # En caso de esquema antiguo u otros problemas, fallback seguro
+        total_predictions = SkinImagePrediction.objects.filter(user=request.user).count()
+        processed_predictions = SkinImagePrediction.objects.filter(user=request.user, predicted_class__isnull=False).count()
+        avg_confidence = 0.0
+        high_risk_predictions = 0
+
+    # Paginación
+    page = request.GET.get('page', 1)
+    paginator = Paginator(qs.order_by('-uploaded_at'), 10)
+    try:
+        page_obj = paginator.page(page)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
+    predictions = page_obj.object_list
+
     context = {
         'predictions': predictions,
-        'title': 'Historial de Predicciones'
+        'title': 'Historial de Predicciones',
+        'page_obj': page_obj,
+        'total_predictions': total_predictions,
+        'processed_predictions': processed_predictions,
+        'avg_confidence': avg_confidence,
+        'high_risk_predictions': high_risk_predictions,
     }
-    
+
     return render(request, 'skin_detector/history.html', context)
 
 
@@ -1559,7 +1626,16 @@ def disease_info(request, disease_code):
         'disease_code': disease_code_lower,
         'disease_name': disease_data['full_name'],
         'disease_data': disease_data,
-        'title': f'{disease_data["full_name"]} - Información Detallada'
+        'title': f'{disease_data["full_name"]} - Información Detallada',
+        # Lista resumida para búsqueda y filtrado en cliente
+        'disease_list': [
+            {
+                'code': k,
+                'full_name': v['full_name'],
+                'description': v.get('description',''),
+                'symptoms': v.get('symptoms',[])
+            } for k, v in DISEASE_DATA.items()
+        ]
     }
     
     return render(request, 'skin_detector/disease_info.html', context)

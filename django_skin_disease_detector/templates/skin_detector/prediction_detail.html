@@ -702,10 +702,7 @@
                         Descargar Reporte
                     </button>
                     
-                    <button class="btn btn-outline-success" onclick="shareResult()">
-                        <i class="fas fa-share-alt me-2"></i>
-                        Compartir Resultado
-                    </button>
+                    {# Botón de compartir eliminado: compartir ahora se gestiona desde el backend por email #}
                 </div>
                 
                 <hr class="my-3">
@@ -796,24 +793,7 @@ function generateReport() {
     $('#reportContent').html(content);
 }
 
-function shareResult() {
-    if (navigator.share) {
-        navigator.share({
-            title: 'Resultado de Análisis de Piel',
-            text: 'Diagnóstico: {{ prediction.get_predicted_disease_name }} ({{ prediction.get_confidence_percentage }}% confianza)',
-            url: window.location.href
-        });
-    } else {
-        // Fallback para navegadores que no soportan Web Share API
-        var url = window.location.href;
-        var text = 'Resultado de análisis de piel: {{ prediction.get_predicted_disease_name }}';
-        
-        // Copiar al portapapeles
-        navigator.clipboard.writeText(url).then(function() {
-            alert('Enlace copiado al portapapeles');
-        });
-    }
-}
+// shareResult removed: sharing moved to backend email flow (no client-side quick share)
 
 function confirmDelete() {
     if (confirm('¿Está seguro de que desea eliminar este análisis? Esta acción no se puede deshacer.')) {
