@@ -13,6 +13,9 @@ pandas>=2.3.0
 opencv-python>=4.12.0
 h5py>=3.15.0
 
+# OOD Detection (Out-of-Distribution Detection)
+scipy>=1.11.0  # Para mahalanobis distance
+
 # Database
 psycopg2-binary
 supabase

@@ -866,10 +866,48 @@ def diagnostico(request):
             prediction_obj.save()
 
             try:
-                # Realizar predicción
+                # Realizar predicción con validación OOD
                 predictor = get_predictor()
                 result = predictor.predict(prediction_obj.image.path)
 
+                # ========================================
+                # VALIDACIÓN DE IMAGEN (NUEVO SISTEMA)
+                # ========================================
+                # Verificar si la imagen fue rechazada por el validador
+                if result.get('success') == False and result.get('error') in ['invalid_image_ood', 'invalid_image_validator']:
+                    # Imagen rechazada: no es una lesión cutánea
+                    logger.warning(f"❌ Imagen rechazada por validador: {result.get('message')}")
+                    
+                    # Eliminar imagen de la base de datos (no es válida)
+                    try:
+                        prediction_obj.delete()
+                    except Exception:
+                        pass
+                    
+                    # Mostrar mensaje de error al usuario
+                    validation_info = result.get('validation', {})
+                    error_message = result.get('message', 'La imagen no parece ser una lesión cutánea.')
+                    
+                    # Mensaje para el usuario
+                    messages.error(
+                        request,
+                        f"❌ {error_message}<br>"
+                        f"Por favor, sube una foto clara de una lesión cutánea (no animales, objetos, paisajes, etc.)."
+                    )
+                    
+                    # Retornar al formulario con información de error
+                    context = {
+                        'form': SkinImageUploadForm(),
+                        'validation_error': True,
+                        'validation_message': error_message,
+                        'validation_details': validation_info,
+                        'title': 'Diagnóstico - Imagen Rechazada'
+                    }
+                    return render(request, 'skin_detector/home.html', context)
+                
+                # ========================================
+                # PREDICCIÓN EXITOSA (CÓDIGO ORIGINAL)
+                # ========================================
                 # Actualizar objeto con resultados
                 prediction_obj.predicted_class = result['predicted_class']
                 prediction_obj.confidence_score = result['confidence']

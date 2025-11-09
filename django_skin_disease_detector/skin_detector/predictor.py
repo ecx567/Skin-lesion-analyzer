@@ -10,6 +10,14 @@ import logging
 # Configurar logging
 logger = logging.getLogger(__name__)
 
+# Importar Skin Validator (nuevo sistema de validación)
+try:
+    from .skin_validator import SkinValidator
+    VALIDATOR_AVAILABLE = True
+except ImportError:
+    logger.warning("⚠️ Skin Validator no disponible. Las imágenes no serán validadas.")
+    VALIDATOR_AVAILABLE = False
+
 
 class SkinDiseasePredictor:
     """
@@ -18,6 +26,8 @@ class SkinDiseasePredictor:
     
     def __init__(self):
         self.model = None
+        self.skin_validator = None  # Nuevo validador de piel
+        self.validator_enabled = False  # Flag para validación
         self.img_size = 224  # Tamaño usado en el entrenamiento
         
         # Definición de las 7 clases (mismo orden que en el entrenamiento)
@@ -125,12 +135,37 @@ class SkinDiseasePredictor:
             
             logger.info("🎉 Modelo listo para usar!")
             
+            # Inicializar nuevo Skin Validator
+            self._init_skin_validator()
+            
         except Exception as e:
             logger.error(f"❌ Error cargando modelo: {str(e)}")
             logger.error(f"   Tipo de error: {type(e).__name__}")
             import traceback
             logger.error(f"   Traceback: {traceback.format_exc()}")
             raise Exception(f"No se pudo cargar el modelo: {str(e)}")
+    
+    def _init_skin_validator(self):
+        """Inicializar el nuevo Skin Validator (sistema híbrido)"""
+        if not VALIDATOR_AVAILABLE:
+            logger.info("ℹ️ Skin Validator no disponible (módulo no importado)")
+            return
+        
+        try:
+            logger.info("🔍 Inicializando Skin Validator...")
+            self.skin_validator = SkinValidator(model=self.model)
+            self.validator_enabled = True
+            
+            logger.info("✅ Skin Validator activado")
+            logger.info("   - Análisis de color de piel: ✓")
+            logger.info("   - Análisis de textura: ✓")
+            logger.info("   - Análisis de confianza: ✓")
+            
+        except Exception as e:
+            logger.warning(f"⚠️ No se pudo inicializar Skin Validator: {str(e)}")
+            logger.warning("   El sistema funcionará normalmente sin validación")
+            self.skin_validator = None
+            self.validator_enabled = False
     
     def preprocess_image(self, image_path: str) -> np.ndarray:
         """
@@ -165,6 +200,7 @@ class SkinDiseasePredictor:
     def predict(self, image_path: str) -> Dict:
         """
         Realizar predicción en una imagen con manejo robusto de errores
+        y validación OOD opcional
         """
         if self.model is None:
             # Intentar recargar modelo si es None
@@ -181,6 +217,10 @@ class SkinDiseasePredictor:
             # Preprocesar imagen
             processed_image = self.preprocess_image(image_path)
             
+            # ========================================
+            # PREDICCIÓN DEL MODELO
+            # ========================================
+            
             # Verificar que el modelo está disponible
             if self.model is None:
                 return self._get_dummy_prediction()
@@ -196,6 +236,53 @@ class SkinDiseasePredictor:
             if predictions is None or len(predictions) == 0:
                 logger.error("Predicciones vacías del modelo")
                 return self._get_dummy_prediction()
+            
+            # ========================================
+            # VALIDACIÓN CON SKIN VALIDATOR (NUEVO)
+            # ========================================
+            validation_result = None
+            if self.validator_enabled and self.skin_validator is not None:
+                logger.info("🔍 Validando imagen con Skin Validator...")
+                
+                try:
+                    # Validar imagen con análisis de color, textura y confianza
+                    validation_result = self.skin_validator.validate(
+                        image=processed_image[0],
+                        predictions=predictions[0]
+                    )
+                    
+                    # Si la imagen NO es válida, retornar error
+                    if not validation_result['is_valid']:
+                        logger.warning(f"❌ Imagen rechazada por Skin Validator")
+                        logger.warning(f"   Razón: {validation_result['message']}")
+                        logger.warning(f"   Score: {validation_result['confidence_score']:.1f}/100")
+                        
+                        details = validation_result.get('details', {})
+                        if 'color_analysis' in details:
+                            logger.warning(f"   Color: {details['color_analysis']['skin_percentage']:.1f}% piel")
+                        if 'confidence_analysis' in details and details['confidence_analysis']:
+                            logger.warning(f"   Confianza: {details['confidence_analysis']['max_confidence']*100:.1f}%")
+                        
+                        return {
+                            'success': False,
+                            'error': 'invalid_image_validator',
+                            'error_type': 'not_skin_lesion',
+                            'message': validation_result['message'],
+                            'validation': {
+                                'is_valid': False,
+                                'confidence_score': validation_result['confidence_score'],
+                                'details': details
+                            },
+                            'processing_time': round(time.time() - start_time, 3)
+                        }
+                    
+                    logger.info(f"✅ Imagen válida (score: {validation_result['confidence_score']:.1f}/100)")
+                    
+                except Exception as val_error:
+                    # Si falla validación, continuar (no romper el flujo)
+                    logger.warning(f"⚠️ Error en validación: {str(val_error)}")
+                    logger.warning("   Continuando sin validación...")
+                    validation_result = None
             
             # Obtener probabilidades
             probabilities = predictions[0]
@@ -215,6 +302,7 @@ class SkinDiseasePredictor:
             
             # Crear resultado detallado
             result = {
+                'success': True,  # Agregado para consistencia
                 'predicted_class': predicted_class_code,
                 'confidence': confidence,
                 'confidence_percentage': round(confidence * 100, 2),
@@ -225,6 +313,14 @@ class SkinDiseasePredictor:
                 'disease_info': self.disease_info[predicted_class_code],
                 'model_status': 'active'
             }
+            
+            # Agregar información de validación si existe
+            if validation_result is not None:
+                result['validation'] = {
+                    'is_valid': validation_result['is_valid'],
+                    'confidence_score': validation_result['confidence_score'],
+                    'message': validation_result['message']
+                }
             
             # Agregar todas las probabilidades
             for idx, prob in enumerate(probabilities):
