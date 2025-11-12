@@ -195,6 +195,56 @@ def safe_file_delete(file_path: str) -> bool:
         return False
 
 
+def fieldfile_to_temp_path(field_file) -> tuple[str, bool]:
+    """
+    Obtener una ruta de archivo local para un `FieldFile` de Django.
+
+    Si el backend de almacenamiento soporta rutas absolutas (p. ej. FileSystemStorage),
+    devuelve `field_file.path` y `False` indicando que no es temporal.
+    Si el backend no soporta rutas (p. ej. AzureStorage), escribe el contenido a
+    un archivo temporal en disco y devuelve la ruta y `True` para indicar que debe
+    eliminarse cuando termine su uso.
+
+    Args:
+        field_file: instancia de ImageField/FieldFile (p. ej. prediction.image)
+
+    Returns:
+        (local_path, is_temp)
+    """
+    try:
+        # Algunos backends lanzan excepción al acceder a .path
+        local_path = field_file.path
+        return local_path, False
+    except Exception:
+        # Crear archivo temporal y volcar contenido
+        import tempfile
+        suffix = os.path.splitext(getattr(field_file, 'name', 'tmp.jpg'))[1] or '.jpg'
+        fd, tmp_path = tempfile.mkstemp(suffix=suffix)
+        os.close(fd)
+        try:
+            try:
+                field_file.open(mode='rb')
+            except Exception:
+                pass
+            with open(tmp_path, 'wb') as out_f:
+                # FieldFile puede exponer .chunks() o .read()
+                try:
+                    for chunk in field_file.chunks():
+                        out_f.write(chunk)
+                except Exception:
+                    try:
+                        data = field_file.read()
+                        out_f.write(data)
+                    except Exception:
+                        pass
+        finally:
+            try:
+                field_file.close()
+            except Exception:
+                pass
+        return tmp_path, True
+
+
 def get_confidence_level(score: float) -> str:
     """
     Determina el nivel de confianza en formato texto.

@@ -30,6 +30,7 @@ import uuid
 from .models import SkinImagePrediction, SocialAccount
 from .forms import SkinImageUploadForm, QuickPredictionForm, UserRegistrationForm, UserLoginForm
 from .predictor import get_predictor
+from .utils import fieldfile_to_temp_path, safe_file_delete
 import logging
 from django.template.loader import render_to_string
 from django.http import HttpResponse
@@ -105,8 +106,13 @@ def send_prediction_report_email(request, prediction_obj):
                 body = render_to_string('skin_detector/email/prediction_email.txt', {'user': request.user, 'prediction': prediction_obj, 'request': request})
                 email = EmailMessage(subject=subject, body=body, from_email=from_email, to=[user_email])
                 email.attach(f'prediction_{prediction_obj.pk}.pdf', pdf_bytes.read(), 'application/pdf')
-                email.send(fail_silently=True)
-                return True
+                try:
+                    sent = email.send(fail_silently=False)
+                    logger.info(f"Email enviado con adjunto PDF (sent={sent}) a {user_email}")
+                    return True
+                except Exception:
+                    logger.exception('Error enviando email con PDF adjunto')
+                    # continuar al fallback
         except Exception:
             logger.exception('Error generando PDF para email; se enviará enlace en su lugar')
 
@@ -124,8 +130,13 @@ def send_prediction_report_email(request, prediction_obj):
                 'Atentamente,\nEquipo DermatologIA'
             )
             email = EmailMessage(subject=subject, body=body, from_email=from_email, to=[user_email])
-            email.send(fail_silently=True)
-            return True
+            try:
+                sent = email.send(fail_silently=False)
+                logger.info(f"Email de enlace enviado (sent={sent}) a {user_email}")
+                return True
+            except Exception:
+                logger.exception('Error enviando email de fallback con enlace')
+                return False
         except Exception:
             logger.exception('Error enviando email de fallback con enlace')
             return False
@@ -868,7 +879,12 @@ def diagnostico(request):
             try:
                 # Realizar predicción con validación OOD
                 predictor = get_predictor()
-                result = predictor.predict(prediction_obj.image.path)
+                local_path, is_temp = fieldfile_to_temp_path(prediction_obj.image)
+                try:
+                    result = predictor.predict(local_path)
+                finally:
+                    if is_temp:
+                        safe_file_delete(local_path)
 
                 # ========================================
                 # VALIDACIÓN DE IMAGEN (NUEVO SISTEMA)
@@ -915,10 +931,15 @@ def diagnostico(request):
                 prediction_obj.processing_time = result.get('processing_time')
                 prediction_obj.processed_at = timezone.now()
 
-                # Obtener dimensiones de la imagen
+                # Obtener dimensiones de la imagen (soporte para storage remoto)
                 from PIL import Image
-                with Image.open(prediction_obj.image.path) as img:
-                    prediction_obj.image_size = f"{img.size[0]}x{img.size[1]}"
+                local_path2, is_temp2 = fieldfile_to_temp_path(prediction_obj.image)
+                try:
+                    with Image.open(local_path2) as img:
+                        prediction_obj.image_size = f"{img.size[0]}x{img.size[1]}"
+                finally:
+                    if is_temp2:
+                        safe_file_delete(local_path2)
 
                 prediction_obj.save()
                 # Enviar correo con reporte al usuario (si corresponde)
@@ -981,20 +1002,25 @@ def prediction_detail(request, pk):
         # Esquema desactualizado: indicar al administrador que ejecute migraciones
         return HttpResponse('Error: esquema de base de datos desactualizado. Ejecute las migraciones (manage.py migrate).', status=500)
     
-    # Obtener predictor para información adicional
+        # Obtener predictor para información adicional
     try:
         predictor = get_predictor()
         
         # Si no está procesada, procesarla ahora
         if not prediction.predicted_class and prediction.image:
-            result = predictor.predict(prediction.image.path)
-            
-            prediction.predicted_class = result['predicted_class']
-            prediction.confidence_score = result['confidence']
-            prediction.probabilities = result['all_probabilities']
-            prediction.processing_time = result['processing_time']
-            prediction.processed_at = timezone.now()
-            prediction.save()
+                local_path, is_temp = fieldfile_to_temp_path(prediction.image)
+                try:
+                    result = predictor.predict(local_path)
+                finally:
+                    if is_temp:
+                        safe_file_delete(local_path)
+
+                prediction.predicted_class = result['predicted_class']
+                prediction.confidence_score = result['confidence']
+                prediction.probabilities = result['all_probabilities']
+                prediction.processing_time = result.get('processing_time')
+                prediction.processed_at = timezone.now()
+                prediction.save()
         
         # Obtener top 3 predicciones si está procesada
         top_predictions = None
@@ -1248,7 +1274,12 @@ def save_and_predict(request):
 
         # Realizar predicción
         predictor = get_predictor()
-        result = predictor.predict(prediction_obj.image.path)
+        local_path, is_temp = fieldfile_to_temp_path(prediction_obj.image)
+        try:
+            result = predictor.predict(local_path)
+        finally:
+            if is_temp:
+                safe_file_delete(local_path)
 
         # Actualizar objeto con resultados
         prediction_obj.predicted_class = result['predicted_class']
@@ -1259,8 +1290,13 @@ def save_and_predict(request):
 
         # Obtener dimensiones de la imagen
         from PIL import Image
-        with Image.open(prediction_obj.image.path) as img:
-            prediction_obj.image_size = f"{img.size[0]}x{img.size[1]}"
+        local_path2, is_temp2 = fieldfile_to_temp_path(prediction_obj.image)
+        try:
+            with Image.open(local_path2) as img:
+                prediction_obj.image_size = f"{img.size[0]}x{img.size[1]}"
+        finally:
+            if is_temp2:
+                safe_file_delete(local_path2)
 
         prediction_obj.save()
         # Enviar correo (si corresponde)
@@ -1397,10 +1433,33 @@ def delete_prediction(request, pk):
         except OperationalError:
             return JsonResponse({'success': False, 'error': 'Esquema de base de datos desactualizado. Ejecute las migraciones.'}, status=500)
         
-        # Eliminar archivo de imagen si existe
+        # Eliminar archivo de imagen si existe (soporte para storage remoto)
         if prediction.image:
-            if os.path.exists(prediction.image.path):
-                os.remove(prediction.image.path)
+            try:
+                # Intentar obtener la ruta local de forma segura (algunos backends lanzan)
+                local_path = None
+                try:
+                    local_path = prediction.image.path
+                except Exception:
+                    local_path = None
+
+                if local_path and os.path.exists(local_path):
+                    try:
+                        os.remove(local_path)
+                    except Exception:
+                        # No bloquear si falla el borrado local
+                        pass
+                else:
+                    # Fallback: usar storage.delete para backends remotos
+                    try:
+                        storage = getattr(prediction.image, 'storage', None)
+                        if storage:
+                            storage.delete(prediction.image.name)
+                    except Exception:
+                        pass
+            except Exception:
+                # No hacer fail en el delete flow
+                pass
         
         # Eliminar el registro de la base de datos
         prediction.delete()

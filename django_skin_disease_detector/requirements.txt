@@ -27,6 +27,10 @@ python-dotenv
 # Utilities
 requests
 
+# Azure (CLI not required as package, but optional Key Vault integration)
+azure-identity>=1.12.0
+azure-keyvault-secrets>=4.10.0
+
 # PDF generation
 xhtml2pdf
 reportlab

@@ -230,10 +230,30 @@ class SkinImagePrediction(models.Model):
             *args: Argumentos posicionales para el método delete del padre.
             **kwargs: Argumentos de palabra clave para el método delete del padre.
         """
-        # Eliminar archivo físico si existe
+        # Eliminar archivo físico si existe (soporte para backends remotos)
         if self.image:
-            if os.path.isfile(self.image.path):
-                os.remove(self.image.path)
+            try:
+                local_path = None
+                try:
+                    local_path = self.image.path
+                except Exception:
+                    local_path = None
+
+                if local_path and os.path.isfile(local_path):
+                    try:
+                        os.remove(local_path)
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        storage = getattr(self.image, 'storage', None)
+                        if storage:
+                            storage.delete(self.image.name)
+                    except Exception:
+                        pass
+            except Exception:
+                # No bloquear el delete si falla el intento de borrar fichero
+                pass
         
         # Llamar al método delete del padre
         super().delete(*args, **kwargs)
