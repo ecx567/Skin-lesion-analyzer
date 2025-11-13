@@ -72,12 +72,14 @@
                     {% csrf_token %}
                     
                     <!-- Drop Zone -->
-                    <div class="drop-zone mb-4" id="dropZone">
-                        <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
-                        <h5>Arrastra tu imagen aquí</h5>
-                        <p class="text-muted mb-3">o haz clic para seleccionar</p>
-                        {{ form.image }}
-                    </div>
+                        <div class="drop-zone mb-4" id="dropZone">
+                            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                            <h5>Arrastra tu imagen aquí</h5>
+                            <p class="text-muted mb-3">o haz clic para seleccionar</p>
+                            {{ form.image }}
+                            <!-- Nombre del archivo seleccionado (se actualiza al seleccionar/arrastrar) -->
+                            <div id="selectedFileName" class="small text-muted mt-2" aria-live="polite"></div>
+                        </div>
                     
                     <!-- Vista Previa (con recorte) -->
                     <div class="text-center mb-4" id="previewContainer" style="display: none;">
@@ -357,25 +359,36 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
-    // Setup drag and drop
-    setupDragDrop('#dropZone', $('#id_image'));
-    
-    // Click en drop zone
+    // Setup drag and drop (usar el id real definido en el formulario: #imageUpload)
+    setupDragDrop('#dropZone', $('#imageUpload'));
+
+    // Click en drop zone abre el input real
     $('#dropZone').click(function() {
-        $('#id_image').click();
+        $('#imageUpload').click();
     });
-    
-    // Preview de imagen principal
-    $('#id_image').change(function() {
+
+    // Preview de imagen principal (escuchar el input real)
+    $('#imageUpload').change(function() {
         if (this.files && this.files[0]) {
             previewImage(this, '#imagePreview');
+            // Mostrar nombre de archivo
+            $('#selectedFileName').text(this.files[0].name);
+            $('#previewContainer').show();
+        }
+    });
+
+    // Cuando se hace drop, setupDragDrop ya llama a previewImage, pero actualizamos el nombre aquí
+    $('#dropZone').on('drop', function(e) {
+        var files = e.originalEvent.dataTransfer.files;
+        if (files && files.length > 0) {
+            $('#selectedFileName').text(files[0].name);
             $('#previewContainer').show();
         }
     });
     
     // Formulario principal
     $('#uploadForm').submit(function() {
-        if (!$('#id_image')[0].files.length) {
+        if (!$('#imageUpload')[0].files.length) {
             alert('Por favor selecciona una imagen');
             return false;
         }
@@ -424,6 +437,9 @@ function resetForm() {
     $('#previewContainer').hide();
     $('#quickResult').hide();
     $('#quickForm')[0].reset();
+    // Limpiar preview y nombre de archivo
+    $('#imagePreview').attr('src', '').hide();
+    $('#selectedFileName').text('');
 }
 
 // Helper to read a cookie value by name (used to get CSRF token)

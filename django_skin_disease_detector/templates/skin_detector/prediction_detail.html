@@ -5,6 +5,23 @@
 
 {% block content %}
 {% csrf_token %}
+<!-- Local CSS to prevent badges and long text from overflowing their containers. -->
+<style>
+    /* Allow badges and custom severity labels to wrap instead of overflowing. */
+    .severity-badge, .badge {
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        max-width: 100%;
+        display: inline-block;
+        hyphens: auto;
+    }
+
+    /* Small tweak for the container so the icon + text don't push out */
+    .severity-badge i, .badge i {
+        margin-right: .5rem;
+    }
+</style>
 <div class="row">
     <!-- Imagen y Resultado Principal -->
     <div class="col-lg-8">

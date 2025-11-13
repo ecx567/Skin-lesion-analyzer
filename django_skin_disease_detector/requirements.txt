@@ -13,24 +13,29 @@ pandas>=2.3.0
 opencv-python>=4.12.0
 h5py>=3.15.0
 
-# OOD Detection (Out-of-Distribution Detection)
-scipy>=1.11.0  # Para mahalanobis distance
+# Para cálculos estadísticos avanzados
+scipy>=1.11.0   # Biblioteca científica para estadísticas, distancias y cálculos (ej: Mahalanobis).
 
-# Database
-psycopg2-binary
-supabase
+# Para gestión de bases de datos
+dj-database-url>=1.0.0  # Permite entender cadenas DATABASE_URL y simplifica la configuración de la BD.
+django-environ  # Facilita la gestión de variables de entorno y configuración basada en entorno.
 
-# Environment Variables
-python-decouple
-python-dotenv
+# Base de datos y almacenamiento de archivos estáticos
+django-storages>=1.13.1 # Soporte para almacenamiento en la nube (Azure, S3, etc.)
+azure-storage-blob>=12.20.0 # Cliente para Azure Blob Storage
+whitenoise>=6.5.0 # Sirve archivos estáticos de manera eficiente en producción.
 
-# Utilities
-requests
+# Parametros de entorno
+python-decouple # Gestión de configuración y variables de entorno
+python-dotenv # Carga variables de entorno desde archivos .env
+
+# HTTP requests
+requests # Biblioteca para hacer solicitudes HTTP de manera sencilla.
 
 # Azure (CLI not required as package, but optional Key Vault integration)
-azure-identity>=1.12.0
-azure-keyvault-secrets>=4.10.0
+azure-identity>=1.12.0 # Manejo de identidades y autenticación en Azure
+azure-keyvault-secrets>=4.10.0 # Acceso a secretos almacenados en Azure Key Vault
 
 # PDF generation
-xhtml2pdf
-reportlab
+xhtml2pdf # Biblioteca para convertir HTML/CSS a PDF
+reportlab # Biblioteca para generar PDFs dinámicamente
