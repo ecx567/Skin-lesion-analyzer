@@ -3,7 +3,7 @@
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![TensorFlow](https://img.shields.io/badge/TensorFlow-2.x-orange.svg)
 ![Django](https://img.shields.io/badge/Django-4.x-green.svg)
-![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green.svg)
+![Azure](https://img.shields.io/badge/Azure-Cloud_Storage-0078D4.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 
@@ -14,7 +14,7 @@
 - [Arquitectura del Sistema](#-arquitectura-del-sistema)
   - [Pipeline Completo de Predicción](#pipeline-completo-de-predicción)
   - [Sistema de Validación (SkinValidator)](#sistema-de-validación-de-imágenes-skinvalidator)
-- [Base de Datos Supabase](#-base-de-datos-supabase)
+- [Servicios en la Nube Azure](#️-servicios-en-la-nube-azure)
 - [Métricas del Modelo](#-métricas-del-modelo)
 - [Estructura del Proyecto](#-estructura-del-proyecto)
 - [Inicio Rápido](#-inicio-rápido)
@@ -116,7 +116,7 @@
 └───────────────────────────┬─────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│                  1. PREPROCESAMIENTO                            │
+│                    1. PREPROCESAMIENTO                          │
 │  - Resize a 224×224                                             │
 │  - Conversión RGB                                               │
 │  - Normalización [0, 1]                                         │
@@ -135,34 +135,34 @@
 └───────────────────────────┬─────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│           3. VALIDACIÓN (SkinValidator) ⚡ NUEVO                │
+│           3. VALIDACIÓN (SkinValidator) ⚡ NUEVO               
 │                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ Color Analysis (35% peso)                                │  │
-│  │  • Detección piel humana (HSV + YCrCb)                   │  │
-│  │  • Detección color animal (browns/grays)                 │  │
-│  │  • Score: skin_% - animal_%                              │  │
-│  └──────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Color Analysis (35% peso)                                │   │
+│  │  • Detección piel humana (HSV + YCrCb)                   │   │
+│  │  • Detección color animal (browns/grays)                 │   │
+│  │  • Score: skin_% - animal_%                              │   │
+│  └──────────────────────────────────────────────────────────┘   │
 │                            ↓                                    │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ Texture Analysis (25% peso)                              │  │
-│  │  • Varianza de intensidad                                │  │
-│  │  • Densidad de bordes (Sobel)                            │  │
-│  │  • Distribución de intensidad                            │  │
-│  └──────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Texture Analysis (25% peso)                              │   │
+│  │  • Varianza de intensidad                                │   │
+│  │  • Densidad de bordes (Sobel)                            │   │
+│  │  • Distribución de intensidad                            │   │
+│  └──────────────────────────────────────────────────────────┘   │
 │                            ↓                                    │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ Confidence Analysis (40% peso)                           │  │
-│  │  • Entropía de Shannon                                   │  │
-│  │  • Max confidence score                                  │  │
-│  │  • Gap Top-1 vs Top-2                                    │  │
-│  └──────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Confidence Analysis (40% peso)                           │   │
+│  │  • Entropía de Shannon                                   │   │
+│  │  • Max confidence score                                  │   │
+│  │  • Gap Top-1 vs Top-2                                    │   │
+│  └──────────────────────────────────────────────────────────┘   │
 │                            ↓                                    │
 │  Reglas de Decisión:                                            │
-│  ✅ animal_% > 30% → RECHAZAR                                   │
-│  ✅ no_skin + conf < 25% → RECHAZAR                             │
-│  ✅ score < 35 → RECHAZAR                                       │
-│  ✅ else → ACEPTAR                                              │
+│  ✅ animal_% > 30% → RECHAZAR                                  |
+│  ✅ no_skin + conf < 25% → RECHAZAR                            | 
+│  ✅ score < 35 → RECHAZAR                                      |
+│  ✅ else → ACEPTAR                                             |
 │                                                                 │
 │  Tiempo: ~50ms                                                  │
 └───────────────────────────┬─────────────────────────────────────┘
@@ -256,81 +256,249 @@ Input Image (224x224x3)
 └─────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────┐
-│         Database (Supabase PostgreSQL)              │
-│  - Predictions    - Images    - Metadata            │
-│  - Sessions       - Statistics - Feedback           │
+│         Base de Datos y Almacenamiento              │
+│                                                     │
+│  ┌─────────────────────┐  ┌─────────────────────┐   │
+│  │   SQLite Database   │  │  Azure Blob Storage │   │
+│  │  - Predictions      │  │  - Images (Media)   │   │
+│  │  - Users            │  │  - Model Files      │   │
+│  │  - History          │  │  - Uploads          │   │
+│  │  - Metadata         │  │  - Static Assets    │   │
+│  └─────────────────────┘  └─────────────────────┘   │
 └─────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🗄️ Base de Datos Supabase
+## ☁️ Servicios en la Nube Azure
 
-El proyecto utiliza **Supabase** como backend principal, proporcionando:
+El proyecto utiliza **Microsoft Azure** como plataforma de almacenamiento en la nube, proporcionando:
 
-### Características de la Base de Datos
+### Características de Azure Blob Storage
 
-- **PostgreSQL Escalable**: Base de datos relacional robusta
-- **API RESTful Automática**: Acceso instantáneo a los datos
-- **Row Level Security (RLS)**: Seguridad a nivel de fila habilitada
-- **Real-time Subscriptions**: Actualizaciones en tiempo real (opcional)
-- **Storage Integration**: Almacenamiento de imágenes en la nube
+- **Almacenamiento Escalable**: Capacidad prácticamente ilimitada para archivos
+- **Alta Disponibilidad**: Redundancia geográfica y backups automáticos
+- **Seguridad de Nivel Empresarial**: Encriptación en reposo y en tránsito (AES-256)
+- **CDN Integration**: Distribución rápida de contenido global
+- **Gestión de Acceso**: Control granular con SAS tokens y Azure AD
 
-### Tablas Principales
+### Estructura de Almacenamiento
 
-| Tabla | Descripción | Registros |
-|-------|-------------|-----------|
-| `skin_image_prediction` | Predicciones de lesiones cutáneas | Principal |
-| `disease_information` | Info de las 7 enfermedades | 7 pre-cargadas |
-| `user_sessions` | Tracking de sesiones anónimas | Dinámico |
-| `system_statistics` | Estadísticas diarias del sistema | Histórico |
-| `prediction_feedback` | Feedback de usuarios | Dinámico |
+| Componente | Tecnología | Descripción |
+|------------|------------|-------------|
+| **Base de Datos** | SQLite | Almacenamiento local de predicciones, usuarios, historial |
+| **Almacenamiento de Imágenes** | Azure Blob Storage | Archivos de imágenes subidas por usuarios |
+| **Archivos del Modelo** | Local + Azure Backup | Modelo CNN (.h5) y archivos de estadísticas |
+| **Archivos Estáticos** | Local (Django Static) | CSS, JavaScript, imágenes del frontend |
+| **Media Files** | Azure Blob Storage | Imágenes de predicciones, uploads temporales |
 
-### Vistas y Funciones
+### Contenedores de Azure Blob Storage
 
-**Vistas Optimizadas:**
-- `v_recent_predictions`: Predicciones recientes con info completa
-- `v_high_risk_predictions`: Filtro de lesiones de alto riesgo
-- `v_prediction_stats_by_disease`: Estadísticas por enfermedad
+**Contenedor Principal (`AZURE_CONTAINER`):**
+- `skin_images/`: Imágenes de lesiones subidas por usuarios
+- `uploads/`: Archivos temporales durante el procesamiento
+- `predictions/`: Imágenes procesadas con resultados
+- `thumbnails/`: Miniaturas para vista previa rápida
 
-**Funciones Útiles:**
-- `get_predictions_by_date_range()`: Estadísticas por rango de fechas
-- `calculate_model_metrics()`: Métricas generales del modelo
-- `update_session_activity()`: Gestión de sesiones
-- `increment_session_predictions()`: Contador de predicciones
+**Características del Contenedor:**
+- **Acceso**: Privado con autenticación por clave de cuenta
+- **Región**: Configurable (recomendado: mismo datacenter que app)
+- **Redundancia**: Configurado con LRS (Locally Redundant Storage) o GRS
+- **Lifecycle Management**: Políticas de retención configurables
+- **Timeout**: 20 segundos por operación
+- **Expiración de URLs**: 1 hora (3600 segundos) para enlaces temporales
 
-### Configuración de Conexión
+### Configuración de Azure Storage
 
 ```python
-# settings.py
-SUPABASE_URL = "https://cpjmodytpeuybpcayzwk.supabase.co"
-SUPABASE_ANON_KEY = "your-anon-key"
+# settings.py - Configuración de Azure Blob Storage
+import environ
 
-# Cliente de Supabase
-from skin_detector.supabase_utils import supabase_client
+env = environ.Env()
 
-# Crear predicción
-prediction = supabase_client.create_prediction({
-    'image_path': 'images/lesion.jpg',
-    'predicted_class': 'mel',
-    'confidence_score': 0.95
-})
+# Credenciales de Azure Storage Account
+AZURE_ACCOUNT_NAME = env('AZURE_ACCOUNT_NAME')  # Nombre de tu storage account
+AZURE_ACCOUNT_KEY = env('AZURE_ACCOUNT_KEY')    # Clave de acceso principal/secundaria
+AZURE_CONTAINER = env('AZURE_CONTAINER')        # Nombre del contenedor (ej: 'skinai-media')
 
-# Obtener predicciones recientes
-recent = supabase_client.get_recent_predictions(limit=10)
+# Configuración de Django-Storages para Azure
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.azure_storage.AzureStorage",
+        "OPTIONS": {
+            "account_name": AZURE_ACCOUNT_NAME,
+            "account_key": AZURE_ACCOUNT_KEY,
+            "azure_container": AZURE_CONTAINER,
+            "timeout": 20,                    # Timeout de operaciones (segundos)
+            "expiration_secs": 3600,          # Tiempo de expiración de URLs (1 hora)
+            "overwrite_files": False,         # No sobrescribir archivos existentes
+            "location": "",                   # Prefijo opcional para rutas
+        },
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    }
+}
 
-# Obtener info de enfermedad
-disease = supabase_client.get_disease_by_code('mel')
+# Uso en código - Django maneja automáticamente el storage
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+
+# Guardar archivo en Azure Blob Storage
+path = default_storage.save('skin_images/lesion.jpg', ContentFile(image_data))
+
+# Obtener URL del archivo
+url = default_storage.url(path)  # Genera URL con SAS token temporal
+
+# Eliminar archivo
+default_storage.delete(path)
+
+# Verificar existencia
+exists = default_storage.exists('skin_images/lesion.jpg')
 ```
 
-### Seguridad y Permisos
+### Variables de Entorno (.env)
 
-- ✅ **RLS Habilitado**: Todas las tablas protegidas
-- ✅ **Anonymous Access**: Usuarios anónimos pueden crear predicciones
-- ✅ **Session-based Security**: Control por sesión de usuario
-- ✅ **Authenticated Admin**: Acceso completo para administradores
+```bash
+# Azure Storage Configuration
+AZURE_ACCOUNT_NAME=tu_storage_account_name    # ej: skinaistorage
+AZURE_ACCOUNT_KEY=tu_clave_de_acceso_aqui    # Clave de 88 caracteres
+AZURE_CONTAINER=tu_contenedor                 # ej: skinai-media
 
-**Ver documentación completa**: [`DATABASE.md`](django_skin_disease_detector/DATABASE.md)
+# Django Database (local SQLite)
+DATABASE_URL=sqlite:///db.sqlite3
+
+# Application Settings
+SECRET_KEY=your-django-secret-key
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+```
+
+### Seguridad y Permisos en Azure
+
+- ✅ **Encriptación en Reposo**: AES-256 automática para todos los blobs
+- ✅ **Encriptación en Tránsito**: HTTPS obligatorio para todas las operaciones
+- ✅ **Autenticación por Clave**: Account Key para operaciones administrativas
+- ✅ **SAS Tokens**: Shared Access Signatures para acceso temporal y limitado
+- ✅ **Azure AD Integration**: Soporte para identidades gestionadas (opcional)
+- ✅ **Private Endpoints**: Configuración de red privada disponible
+- ✅ **Firewall de Storage**: Restricción por IP disponible
+
+**Recomendaciones de Seguridad:**
+- Rotar las claves de acceso periódicamente (cada 90 días)
+- Usar Azure Key Vault para almacenar secretos en producción
+- Habilitar logging y monitoreo de accesos
+- Configurar lifecycle policies para auto-eliminación de archivos antiguos
+
+### 🚀 Cómo Crear y Configurar Azure Storage Account
+
+**Paso 1: Crear Storage Account en Azure Portal**
+
+1. Inicia sesión en [Azure Portal](https://portal.azure.com)
+2. Busca "Storage accounts" en la barra de búsqueda
+3. Haz clic en **+ Create** o **+ Crear**
+4. Completa el formulario:
+   - **Subscription**: Tu suscripción de Azure
+   - **Resource group**: Crea uno nuevo o selecciona existente (ej: `rg-skinai-prod`)
+   - **Storage account name**: Nombre único global (ej: `skinaistorage2024`)
+   - **Region**: Selecciona la más cercana a tus usuarios (ej: `East US`, `West Europe`)
+   - **Performance**: `Standard` (suficiente para imágenes)
+   - **Redundancy**: `LRS` (desarrollo) o `GRS` (producción)
+5. Haz clic en **Review + Create** → **Create**
+
+**Paso 2: Crear Contenedor (Container)**
+
+1. Una vez creado el Storage Account, ve a **Containers** en el menú lateral
+2. Haz clic en **+ Container**
+3. Configura:
+   - **Name**: `skinai-media` (o el nombre que prefieras)
+   - **Public access level**: `Private` (sin acceso público)
+4. Haz clic en **Create**
+
+**Paso 3: Obtener Credenciales**
+
+1. En tu Storage Account, ve a **Security + networking** → **Access keys**
+2. Haz clic en **Show keys** para ver las credenciales
+3. Copia los siguientes valores:
+   - **Storage account name**: Nombre de tu storage (ej: `skinaistorage2024`)
+   - **Key1**: Clave de acceso principal (cadena de ~88 caracteres)
+
+**Paso 4: Configurar Variables de Entorno**
+
+Crea o actualiza el archivo `.env` en tu proyecto:
+
+```bash
+# Azure Storage Configuration
+AZURE_ACCOUNT_NAME=skinaistorage2024          # Tu storage account name
+AZURE_ACCOUNT_KEY=tu_clave_aqui==             # Key1 completa (88 caracteres)
+AZURE_CONTAINER=skinai-media                  # Nombre de tu contenedor
+```
+
+**Paso 5: Instalar Dependencias**
+
+```bash
+pip install django-storages[azure]
+pip install azure-storage-blob
+pip install azure-identity
+```
+
+**Paso 6: Verificar Configuración**
+
+Ejecuta este script de prueba para verificar la conexión:
+
+```python
+# test_azure_connection.py
+import os
+from azure.storage.blob import BlobServiceClient
+from dotenv import load_dotenv
+
+load_dotenv()
+
+account_name = os.getenv('AZURE_ACCOUNT_NAME')
+account_key = os.getenv('AZURE_ACCOUNT_KEY')
+container_name = os.getenv('AZURE_CONTAINER')
+
+connection_string = f"DefaultEndpointsProtocol=https;AccountName={account_name};AccountKey={account_key};EndpointSuffix=core.windows.net"
+
+try:
+    blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+    container_client = blob_service_client.get_container_client(container_name)
+    
+    # Verificar que el contenedor existe
+    if container_client.exists():
+        print(f"✅ Conexión exitosa a Azure Storage")
+        print(f"📦 Contenedor '{container_name}' encontrado")
+        
+        # Listar algunos blobs (opcional)
+        blobs = list(container_client.list_blobs())[:5]
+        print(f"📄 {len(blobs)} archivos encontrados (mostrando primeros 5)")
+    else:
+        print(f"❌ Contenedor '{container_name}' no existe")
+        
+except Exception as e:
+    print(f"❌ Error de conexión: {str(e)}")
+```
+
+**Ejecutar prueba:**
+```bash
+python test_azure_connection.py
+```
+
+### 📊 Costos de Azure Storage
+
+**Estimación para SkinAI (uso típico):**
+
+| Concepto | Cantidad Mensual | Costo USD (aprox.) |
+|----------|------------------|-------------------|
+| **Almacenamiento (LRS)** | 10 GB | $0.20 |
+| **Operaciones Write** | 10,000 | $0.10 |
+| **Operaciones Read** | 50,000 | $0.004 |
+| **Transferencia de Datos** | 5 GB salida | $0.45 |
+| **TOTAL ESTIMADO** | - | **~$0.75/mes** |
+
+💡 **Tier Gratuito**: Azure ofrece $200 créditos durante 30 días para nuevas cuentas.
+
+**Ver calculadora de precios**: [Azure Pricing Calculator](https://azure.microsoft.com/en-us/pricing/calculator/)
 
 ---
 
@@ -552,20 +720,21 @@ SECRET_KEY=your-secret-key-here
 DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
 
-# Database (opcional, por defecto SQLite)
+# Azure Storage Configuration
+AZURE_ACCOUNT_NAME=tu_storage_account_name
+AZURE_ACCOUNT_KEY=tu_clave_de_acceso_aqui
+AZURE_CONTAINER=skinai-media
+
+# Database (SQLite local)
 DATABASE_URL=sqlite:///db.sqlite3
-
-# Media Files
-MEDIA_ROOT=media/
-MEDIA_URL=/media/
-
-# Static Files
-STATIC_ROOT=staticfiles/
-STATIC_URL=/static/
 
 # Model Configuration
 MODEL_PATH=models/improved_balanced_7class_model.h5
 IMAGE_SIZE=224
+
+# Application Settings
+MAX_UPLOAD_SIZE=10485760  # 10MB
+ALLOWED_IMAGE_EXTENSIONS=jpg,jpeg,png
 ```
 
 ### Configuración de Django
@@ -750,10 +919,10 @@ Input Image (224×224×3)
 │          (Texture × 0.25) +            │
 │          (Confidence × 0.40)           │
 │                                        │
-│  RULE 1: animal_percentage > 30%      │
+│  RULE 1: animal_percentage > 30%       │
 │         → REJECT (animal detected)     │
 │                                        │
-│  RULE 2: skin_percentage < 5% AND     │
+│  RULE 2: skin_percentage < 5% AND      │
 │          confidence < 25%              │
 │         → REJECT (no skin + low conf)  │
 │                                        │
@@ -1625,7 +1794,7 @@ class SkinDiseasePredictor:
 
 ### Deployment
 
-#### Producción con Gunicorn
+#### Producción con Gunicorn y Azure
 
 ```bash
 # Instalar Gunicorn
@@ -1635,7 +1804,9 @@ pip install gunicorn
 gunicorn skin_disease_project.wsgi:application \
     --bind 0.0.0.0:8000 \
     --workers 4 \
-    --timeout 120
+    --timeout 120 \
+    --access-logfile - \
+    --error-logfile -
 
 # Con NGINX como reverse proxy
 # /etc/nginx/sites-available/skinai
@@ -1650,13 +1821,69 @@ server {
     }
 
     location /static/ {
-        alias /path/to/static/;
+        alias /path/to/staticfiles/;
     }
 
-    location /media/ {
-        alias /path/to/media/;
-    }
+    # Media files servidos desde Azure Blob Storage
+    # No se necesita location /media/ ya que Django maneja las URLs
 }
+```
+
+#### Azure App Service Deployment
+
+**Opción 1: Deployment directo desde GitHub**
+
+1. Crear App Service en Azure Portal:
+   - Runtime: Python 3.9+
+   - Plan: B1 o superior
+   - Región: Mismo que Storage Account
+
+2. Configurar variables de entorno en Azure:
+```bash
+az webapp config appsettings set --resource-group rg-skinai \
+  --name skinai-webapp \
+  --settings \
+  AZURE_ACCOUNT_NAME="tu_storage_account" \
+  AZURE_ACCOUNT_KEY="tu_clave" \
+  AZURE_CONTAINER="skinai-media" \
+  SECRET_KEY="tu_secret_key" \
+  DEBUG="False" \
+  ALLOWED_HOSTS="skinai-webapp.azurewebsites.net"
+```
+
+3. Configurar startup command:
+```bash
+gunicorn --bind=0.0.0.0 --timeout 600 skin_disease_project.wsgi
+```
+
+**Opción 2: Deployment con Azure CLI**
+
+```bash
+# Login a Azure
+az login
+
+# Crear resource group
+az group create --name rg-skinai --location eastus
+
+# Crear App Service Plan
+az appservice plan create \
+  --name plan-skinai \
+  --resource-group rg-skinai \
+  --sku B1 \
+  --is-linux
+
+# Crear Web App
+az webapp create \
+  --resource-group rg-skinai \
+  --plan plan-skinai \
+  --name skinai-webapp \
+  --runtime "PYTHON:3.9"
+
+# Deploy desde repositorio local
+az webapp up \
+  --resource-group rg-skinai \
+  --name skinai-webapp \
+  --runtime "PYTHON:3.9"
 ```
 
 #### Docker Deployment
@@ -2224,6 +2451,8 @@ volumes:
 
 #### Monitoreo y Logging
 
+**Logging Local:**
+
 ```python
 # settings.py - Configuración de logging
 LOGGING = {
@@ -2267,6 +2496,84 @@ LOGGING = {
     },
 }
 ```
+
+**Azure Application Insights (Recomendado para Producción):**
+
+```bash
+# Instalar SDK
+pip install opencensus-ext-azure
+pip install opencensus-ext-django
+```
+
+```python
+# settings.py - Configuración de Application Insights
+from opencensus.ext.azure.log_exporter import AzureLogHandler
+import os
+
+# Application Insights Connection String
+APPLICATIONINSIGHTS_CONNECTION_STRING = os.getenv('APPLICATIONINSIGHTS_CONNECTION_STRING')
+
+MIDDLEWARE = [
+    # ... otros middlewares
+    'opencensus.ext.django.middleware.OpencensusMiddleware',
+]
+
+# Configurar telemetría
+OPENCENSUS = {
+    'TRACE': {
+        'SAMPLER': 'opencensus.trace.samplers.ProbabilitySampler(rate=1.0)',
+        'EXPORTER': f'''opencensus.ext.azure.trace_exporter.AzureExporter(
+            connection_string="{APPLICATIONINSIGHTS_CONNECTION_STRING}"
+        )''',
+    }
+}
+
+# Logging con Azure
+LOGGING = {
+    'version': 1,
+    'handlers': {
+        'azure': {
+            'level': 'INFO',
+            'class': 'opencensus.ext.azure.log_exporter.AzureLogHandler',
+            'connection_string': APPLICATIONINSIGHTS_CONNECTION_STRING,
+        },
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['azure', 'console'],
+            'level': 'INFO',
+        },
+        'skin_detector': {
+            'handlers': ['azure'],
+            'level': 'INFO',
+        },
+    },
+}
+```
+
+**Configurar en Azure Portal:**
+
+1. Crear Application Insights resource
+2. Copiar Connection String
+3. Agregar a variables de entorno:
+
+```bash
+# .env
+APPLICATIONINSIGHTS_CONNECTION_STRING=InstrumentationKey=your-key;IngestionEndpoint=https://...
+```
+
+**Métricas que se pueden monitorear:**
+- ✅ Requests/segundo
+- ✅ Tiempo de respuesta
+- ✅ Errores y excepciones
+- ✅ Uso de recursos (CPU, memoria)
+- ✅ Predicciones por día/hora
+- ✅ Tiempos de procesamiento del modelo
+- ✅ Operaciones de Azure Storage
 
 #### Health Checks y Monitoring
 
@@ -2316,6 +2623,33 @@ python test_db_connection.py
 # Validación completa del sistema
 python verify_integration.py
 ```
+
+---
+
+## 📚 Documentación Adicional
+
+### Guías de Configuración
+
+- **[Configuración de Azure (AZURE_SETUP.md)](django_skin_disease_detector/AZURE_SETUP.md)**: Guía completa de configuración de Azure Storage Account, deployment en Azure App Service, monitoreo con Application Insights, y mejores prácticas de seguridad.
+
+### Documentación Técnica del Sistema
+
+- **[Sistema de Validación (SKIN_VALIDATOR_README.md)](django_skin_disease_detector/SKIN_VALIDATOR_README.md)**: Arquitectura detallada del SkinValidator, algoritmos de análisis, y métricas de rendimiento.
+
+- **[Integración Completa (INTEGRATION_COMPLETE.md)](django_skin_disease_detector/INTEGRATION_COMPLETE.md)**: Documentación del proceso de integración del sistema de validación con Django.
+
+### Archivos de Configuración
+
+- **[.env.example](django_skin_disease_detector/.env.example)**: Plantilla de variables de entorno con todas las configuraciones necesarias.
+
+- **[requirements.txt](django_skin_disease_detector/requirements.txt)**: Dependencias Python completas del proyecto incluyendo Azure SDK.
+
+### Deployment y Producción
+
+Para información detallada sobre deployment en Azure, consulta:
+- **Azure Storage**: Ver [AZURE_SETUP.md](django_skin_disease_detector/AZURE_SETUP.md) sección "Configuración de Azure Storage Account"
+- **Azure App Service**: Ver [AZURE_SETUP.md](django_skin_disease_detector/AZURE_SETUP.md) sección "Deployment en Azure App Service"
+- **Application Insights**: Ver [AZURE_SETUP.md](django_skin_disease_detector/AZURE_SETUP.md) sección "Monitoreo con Application Insights"
 
 ---
 
@@ -2417,6 +2751,8 @@ python verify_integration.py
 🏗️  Arquitectura:               5 bloques CNN + 4 capas densas
 📦 Tamaño modelo H5:            182 MB
 📱 Tamaño modelo TFLite:        58 MB (3.14× compresión)
+☁️  Cloud Storage:              Azure Blob Storage
+💾 Base de Datos:               SQLite (local)
 🔐 Compliance:                  GDPR/HIPAA ready
 ⭐ GitHub Stars:                [ecx567/Skin-lesion-analyzer]
 ```
